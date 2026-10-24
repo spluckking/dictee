@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Dictée-Blocs</title>
+  <meta name="description" content="Apprendre sa liste de mots de la semaine avant la dictée, en construisant son monde de blocs.">
+  <meta name="theme-color" content="#5dbb3f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preload" href="fonts/andika-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Paysage de blocs dessiné en canvas (js/pixel.js) -->
+  <canvas id="decor" aria-hidden="true"></canvas>
+
+  <main id="app">
+
+    <!-- ===================== ACCUEIL ===================== -->
+    <section id="ecran-accueil" class="ecran">
+      <header class="barre">
+        <h1 class="titre-pixel">Dictée-Blocs</h1>
+        <div class="barre-droite">
+          <button class="btn btn-pierre btn-icone" data-action="son" aria-label="Couper ou remettre le son">🔊</button>
+          <button class="btn btn-pierre btn-icone" data-action="parent" aria-label="Espace parent">⚙️</button>
+        </div>
+      </header>
+
+      <div class="panneau accueil-info">
+        <canvas id="mineur-accueil" class="scene-mineur" aria-hidden="true"></canvas>
+        <div>
+          <p id="compte-a-rebours" class="grand"></p>
+          <p id="resume-mots"></p>
+        </div>
+      </div>
+
+      <button class="btn btn-herbe btn-geant" id="btn-mode-du-jour" data-action="jouer-du-jour">
+        <span class="petit-titre">Mode du jour</span>
+        <span id="nom-mode-du-jour"></span>
+      </button>
+
+      <div class="grille-modes">
+        <button class="btn btn-saphir" data-action="jouer" data-mode="flash">🎧<br>Dictée-flash</button>
+        <button class="btn btn-planche" data-action="jouer" data-mode="regarder">👀<br>Regarder, cacher, écrire</button>
+        <button class="btn btn-cuivre" data-action="jouer" data-mode="lettres">🔤<br>Lettres mélangées</button>
+        <button class="btn btn-amethyste" data-action="jouer" data-mode="choix">✅<br>Le bon mot</button>
+      </div>
+
+      <div class="ligne-boutons">
+        <button class="btn btn-or" data-action="jouer" data-mode="blanche" id="btn-blanche">📝 Dictée blanche</button>
+        <button class="btn btn-brique" data-action="monde">🏠 Mon monde</button>
+      </div>
+    </section>
+
+    <!-- ===================== EXERCICE ===================== -->
+    <section id="ecran-jeu" class="ecran" hidden>
+      <header class="barre">
+        <button class="btn btn-pierre btn-icone" data-action="quitter" aria-label="Revenir à l'accueil">🏠</button>
+        <div class="avancement">
+          <span id="nom-mode" class="titre-pixel petit"></span>
+          <span id="compteur-mot"></span>
+        </div>
+        <div class="butin" aria-label="Blocs gagnés pendant la séance"><img id="butin-icone" alt=""><span id="butin-nombre">0</span></div>
+        <button class="btn btn-pierre btn-icone" data-action="son" aria-label="Couper ou remettre le son">🔊</button>
+      </header>
+
+      <canvas id="mineur-jeu" class="scene-mineur scene-jeu" aria-hidden="true"></canvas>
+
+      <div class="panneau zone-jeu">
+        <div class="ligne-boutons outils">
+          <button class="btn btn-saphir btn-reecouter" data-action="reecouter">🔊 Réécouter</button>
+          <button class="btn btn-or" data-action="indice" id="btn-indice">💡 Indice</button>
+        </div>
+        <div id="indice" class="indice" hidden></div>
+
+        <!-- consigne / mot affiché (regarder-cacher-écrire, correction) -->
+        <p id="consigne" class="consigne"></p>
+        <div id="mot-montre" class="mot mot-montre" hidden></div>
+
+        <!-- saisie au clavier (manuscrit Android) -->
+        <form id="saisie-clavier" class="saisie" hidden autocomplete="off">
+          <input id="champ" class="mot champ" type="text" inputmode="text" enterkeyhint="done"
+                 autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                 aria-label="Écris le mot ici">
+          <div class="ligne-boutons">
+            <button type="submit" class="btn btn-herbe">Valider</button>
+            <button type="button" class="btn btn-pierre" data-action="vers-tuiles">🔤 Tuiles</button>
+          </div>
+        </form>
+
+        <!-- saisie par tuiles de lettres -->
+        <div id="saisie-tuiles" class="saisie" hidden>
+          <div id="reponse-tuiles" class="tuiles reponse" aria-label="Ta réponse"></div>
+          <div id="reserve-tuiles" class="tuiles reserve" aria-label="Lettres disponibles"></div>
+          <div class="ligne-boutons">
+            <button type="button" class="btn btn-herbe" data-action="valider-tuiles">Valider</button>
+            <button type="button" class="btn btn-pierre" data-action="effacer-tuiles">Effacer</button>
+            <button type="button" class="btn btn-pierre" data-action="vers-clavier" id="btn-vers-clavier">⌨️ Clavier</button>
+          </div>
+        </div>
+
+        <!-- confirmation de ce que le clavier a reconnu -->
+        <div id="confirmation" class="confirmation" hidden>
+          <p>Tu as écrit :</p>
+          <div id="reconnu" class="mot reconnu"></div>
+          <div class="ligne-boutons">
+            <button class="btn btn-herbe" data-action="confirmer">C'est ce que j'ai écrit</button>
+            <button class="btn btn-brique" data-action="recommencer">Effacer, je recommence</button>
+          </div>
+        </div>
+
+        <!-- « Le bon mot » : 3 choix -->
+        <div id="choix" class="choix" hidden></div>
+
+        <!-- correction -->
+        <div id="correction" class="correction" hidden>
+          <p id="message" class="message"></p>
+          <div id="alignement" class="alignement"></div>
+          <div class="ligne-boutons">
+            <button class="btn btn-herbe" data-action="continuer" id="btn-continuer">Continuer ➜</button>
+            <button class="btn btn-saphir" data-action="reecrire" id="btn-reecrire">Je l'ai bien regardé, je l'écris</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== FIN DE SÉANCE ===================== -->
+    <section id="ecran-fin" class="ecran" hidden>
+      <div class="panneau fin">
+        <h2 class="titre-pixel">Bravo !</h2>
+        <canvas id="mineur-fin" class="scene-mineur" aria-hidden="true"></canvas>
+        <p id="fin-texte" class="grand"></p>
+        <div id="fin-butin" class="inventaire"></div>
+        <div id="fin-details"></div>
+        <p class="grand">Reviens demain pour gagner encore des blocs !</p>
+        <div class="ligne-boutons">
+          <button class="btn btn-brique" data-action="monde">🏠 Mon monde</button>
+          <button class="btn btn-herbe" data-action="accueil">Accueil</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== MON MONDE ===================== -->
+    <section id="ecran-monde" class="ecran" hidden>
+      <header class="barre">
+        <button class="btn btn-pierre btn-icone" data-action="accueil" aria-label="Revenir à l'accueil">⬅️</button>
+        <h2 class="titre-pixel">Mon monde</h2>
+        <span></span>
+      </header>
+      <div id="monde-scroll" class="monde-scroll"><canvas id="monde"></canvas></div>
+      <div class="panneau">
+        <p id="monde-texte" class="grand"></p>
+        <div id="inventaire" class="inventaire"></div>
+      </div>
+    </section>
+
+    <!-- ===================== PARENT : QUESTION ===================== -->
+    <section id="ecran-porte" class="ecran" hidden>
+      <div class="panneau porte">
+        <h2 class="titre-pixel">Espace parent</h2>
+        <p class="grand">Combien font <span id="calcul"></span> ?</p>
+        <form id="form-porte" autocomplete="off">
+          <input id="reponse-calcul" class="champ-nombre" type="text" inputmode="numeric" pattern="[0-9]*" aria-label="Résultat">
+          <div class="ligne-boutons">
+            <button type="submit" class="btn btn-herbe">Entrer</button>
+            <button type="button" class="btn btn-pierre" data-action="accueil">Annuler</button>
+          </div>
+        </form>
+        <p id="porte-erreur" class="message" hidden>Ce n'est pas ça.</p>
+      </div>
+    </section>
+
+    <!-- ===================== PARENT ===================== -->
+    <section id="ecran-parent" class="ecran" hidden>
+      <header class="barre">
+        <button class="btn btn-pierre btn-icone" data-action="accueil" aria-label="Revenir à l'accueil">⬅️</button>
+        <h2 class="titre-pixel">Espace parent</h2>
+        <span></span>
+      </header>
+
+      <div class="panneau parent">
+        <h3>Liste de la semaine</h3>
+        <p class="aide">Un mot par ligne. Phrase facultative après une barre : <code>chevaux | Les chevaux galopent dans le pré.</code></p>
+        <textarea id="liste" rows="10" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+        <div class="ligne-boutons">
+          <button class="btn btn-herbe" data-action="enregistrer-liste">Enregistrer la liste</button>
+          <button class="btn btn-pierre" data-action="exemple">Liste d'exemple</button>
+        </div>
+        <p id="liste-ok" class="aide" hidden></p>
+
+        <h3>Jour de la dictée</h3>
+        <select id="jour-dictee">
+          <option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option>
+          <option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option>
+          <option value="0">Dimanche</option>
+        </select>
+
+        <h3>Progression</h3>
+        <div class="tableau-scroll"><table id="progression"></table></div>
+        <div id="scores-blanche" class="aide"></div>
+
+        <h3>Réglages</h3>
+        <label class="option"><input type="checkbox" id="opt-cursive"> Afficher les mots en écriture cursive</label>
+        <label class="option"><input type="checkbox" id="opt-son"> Sons du jeu</label>
+        <label class="option">Saisie par défaut :
+          <select id="opt-saisie"><option value="clavier">Clavier (écriture manuscrite)</option><option value="tuiles">Tuiles de lettres</option></select>
+        </label>
+        <p class="aide">Voix : <span id="voix"></span> <button class="btn btn-pierre btn-petit" data-action="test-voix">Tester</button></p>
+
+        <h3>Nouvelle semaine</h3>
+        <p class="aide">Colle d'abord la nouvelle liste dans le cadre ci-dessus, puis :</p>
+        <label class="option"><input type="checkbox" id="garder-rates" checked> Garder en révision les mots pas encore sus : <span id="liste-rates"></span></label>
+        <div class="ligne-boutons">
+          <button class="btn btn-brique" data-action="nouvelle-semaine">Commencer une nouvelle semaine</button>
+        </div>
+        <p id="semaine-ok" class="aide" hidden></p>
+        <p class="aide">Le monde construit par l'enfant est toujours conservé.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/align.js"></script>
+  <script src="js/leitner.js"></script>
+  <script src="js/distractors.js"></script>
+  <script src="js/syllables.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/pixel.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
