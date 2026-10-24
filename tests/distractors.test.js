@@ -67,3 +67,14 @@ test('generate : varie les règles quand c\'est possible', () => {
 test('generate : reproductible avec le même générateur', () => {
   assert.deepEqual(D.generate('printemps', 2, rng(7)), D.generate('printemps', 2, rng(7)));
 });
+
+test('mot avec article ou pronom : seul le dernier mot change', () => {
+  for (const w of ['la jungle', "l'attention", 'un éléphant', 'nous voyons', 'ils peignent']) {
+    for (let seed = 1; seed < 10; seed++) {
+      const d = D.generate(w, 2, rng(seed));
+      assert.equal(d.length, 2, w);
+      const prefix = w.slice(0, w.search(/[^\s']+$/));
+      d.forEach((v) => { assert.ok(v.startsWith(prefix), v); assert.notEqual(v, w); });
+    }
+  }
+});

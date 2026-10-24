@@ -113,9 +113,13 @@ Sinon le clavier pourrait corriger les fautes à la place de l'enfant. L'appli d
 
 **Paramètres → Fonctions avancées → S Pen → S Pen vers texte** : activer. L'enfant écrit directement dans le champ avec le S Pen. Sur le clavier Samsung, couper aussi **Texte prédictif** et **Correction automatique** dans **Paramètres → Gestion globale → Paramètres du Clavier Samsung**.
 
-**Écriture directe au stylet** (réglage activé par défaut dans l'espace parent) : l'appli ne place pas le curseur dans la case à chaque mot et le clavier virtuel ne s'ouvre pas tout seul. L'enfant écrit directement dans la case avec le stylet. Le bouton ⌨️ affiche le clavier si besoin. Si l'écriture au stylet ne fonctionne pas sur la tablette, décocher ce réglage.
+**Clavier automatique** : à chaque mot, l'appli place le curseur dans la case et le clavier (manuscrit) s'ouvre. Pour écrire au stylet directement dans la case sans que le clavier s'ouvre, cocher « Ne pas ouvrir le clavier automatiquement » dans l'espace parent (un bouton ⌨️ permet alors de l'afficher).
 
 Le clavier peut mal reconnaître une lettre : après chaque saisie, l'appli affiche en gros ce qui a été reconnu avec « C'est ce que j'ai écrit » et « Effacer, je recommence ». Si l'écriture pose problème, le bouton **Tuiles** permet de répondre sans clavier.
+
+## Liste publiée (`liste.txt`)
+
+La liste de la semaine peut aussi être publiée avec l'appli : c'est le fichier `liste.txt` à la racine du dépôt (même format que dans l'espace parent, première ligne facultative `# Titre`). À chaque ouverture, si la tablette est en ligne et que `liste.txt` a changé, l'appli démarre automatiquement une nouvelle semaine avec cette liste. Les mots pas encore sus de la liste publiée précédente sont gardés en révision. Le monde de l'enfant est conservé.
 
 ## Espace parent
 
@@ -130,7 +134,7 @@ Bouton ⚙️ en haut de l'accueil, puis répondre à la multiplication.
 - **Jour de la dictée** : vendredi par défaut.
 - **Progression** : boîte de chaque mot, réussites (dont avec indice), erreurs, erreurs fréquentes, prochaine révision, scores des dictées blanches.
 - **Nouvelle semaine** : coller la nouvelle liste, puis « Commencer une nouvelle semaine ». Les mots pas encore en boîte 3 peuvent être gardés en révision. Le monde de l'enfant est conservé.
-- **Réglages** : écriture au stylet sans clavier virtuel, écriture cursive (police Playwrite FR Moderne), sons, saisie par défaut (clavier ou tuiles), test de la voix.
+- **Réglages** : ouverture automatique du clavier, écriture cursive (police Playwrite FR Moderne), sons, saisie par défaut (clavier ou tuiles), test de la voix.
 
 Si aucune voix française n'est trouvée : **Paramètres Android → Système → Langues → Synthèse vocale** → moteur Google → installer les données vocales **Français (France)**.
 

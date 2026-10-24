@@ -117,9 +117,11 @@
       const out = [];
       for (let i = 0; i < w.length - 1; i++) {
         const pair = w.slice(i, i + 2), nx = w[i + 2];
-        if ((pair === 'en' || pair === 'an' || pair === 'em' || pair === 'am') && nx && !isVowel(nx) && nx !== 'n' && nx !== 'm') {
+        if ((pair === 'en' || pair === 'an' || pair === 'em' || pair === 'am') && (!nx || (!isVowel(nx) && nx !== 'n' && nx !== 'm'))) {
           out.push(splice(w, i, 1, pair[0] === 'e' ? 'a' : 'e'));
         }
+        // un / on devant consonne (jungle → jongle)
+        if (pair === 'un' && nx && !isVowel(nx) && nx !== 'n') out.push(splice(w, i, 1, 'o'));
       }
       return out;
     },
@@ -167,6 +169,8 @@
         out.push(splice(w, i, 1, w[i] + w[i]));
       }
     }
+    // dernier recours : s muet ajouté (jungle → jungles)
+    if (!/[sx]$/.test(w)) out.push(w + 's');
     return out.filter((v) => v !== w && v.length > 1);
   }
 
@@ -183,6 +187,10 @@
   function generate(word, n, rng) {
     n = n || 2;
     rng = rng || Math.random;
+    // « la jungle », « l'attention », « nous voyons » : on ne modifie que le
+    // dernier mot, l'article ou le pronom reste juste.
+    const m = word.normalize('NFC').match(/^(.*[\s'])([^\s']{2,})$/);
+    if (m) return generate(m[2], n, rng).map((v) => m[1] + v);
     const w = word.normalize('NFC');
     const byRule = candidates(w);
     const rules = shuffle(Object.keys(byRule).filter((k) => byRule[k].length), rng);

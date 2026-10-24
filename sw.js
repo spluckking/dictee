@@ -9,12 +9,13 @@
  * instantanément depuis le cache ; si le réseau est là, les fichiers sont
  * rafraîchis pour le lancement suivant. Changer VERSION force un recache complet.
  */
-const VERSION = 'dictee-blocs-v2';
+const VERSION = 'dictee-blocs-v3';
 
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './liste.txt',
   './css/style.css',
   './js/align.js',
   './js/leitner.js',
@@ -60,6 +61,18 @@ self.addEventListener('fetch', (event) => {
   // Navigation (ouverture de l'appli) : toujours la page principale.
   const isNav = req.mode === 'navigate';
   const key = isNav ? new URL('./index.html', self.registration.scope).href : req;
+
+  // La liste de la semaine : réseau d'abord (pour recevoir la nouvelle liste), cache sinon.
+  if (url.pathname.endsWith('/liste.txt')) {
+    event.respondWith(
+      caches.open(VERSION).then((cache) => fetch(req).then((res) => {
+        if (res.ok) cache.put(req, res.clone());
+        return res;
+      }).catch(() => cache.match(req, { ignoreSearch: true })
+        .then((r) => r || new Response('', { status: 404 }))))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.open(VERSION).then(async (cache) => {

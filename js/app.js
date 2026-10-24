@@ -74,7 +74,7 @@
     const words = Store.allWords();
     const due = words.filter((w) => Leitner.isDue(S.progress[w], today())).length;
     const su = words.filter((w) => S.progress[w] && S.progress[w].box === 3).length;
-    $('#resume-mots').textContent = words.length + ' mots cette semaine · ' + su + ' déjà sus · ' +
+    $('#resume-mots').textContent = (S.listTitle ? S.listTitle + ' · ' : '') + words.length + ' mots cette semaine · ' + su + ' déjà sus · ' +
       (due ? due + ' à revoir aujourd\'hui' : 'tout est revu pour aujourd\'hui !');
     const mode = Leitner.dailyMode(d);
     $('#nom-mode-du-jour').textContent = MODES[mode];
@@ -162,20 +162,20 @@
   }
 
   /**
-   * Champ de saisie. On ne donne PAS le focus automatiquement : sinon le
-   * clavier virtuel s'ouvre à chaque mot. Avec le stylet, l'enfant écrit
-   * directement dans la case. Option « stylet » (par défaut) :
-   * inputmode="none" empêche aussi le clavier de s'ouvrir quand on touche la
-   * case ; le bouton ⌨️ le rouvre au besoin.
+   * Champ de saisie : par défaut on lui donne le focus, ce qui ouvre le
+   * clavier (manuscrit) à chaque mot. Option « stylet direct » (désactivée
+   * par défaut) : pas de focus automatique et inputmode="none", l'enfant écrit
+   * directement dans la case ; le bouton ⌨️ rouvre le clavier au besoin.
    */
   function openKeyboard() {
     show($('#saisie-tuiles'), false);
     show($('#saisie-clavier'), true);
     const f = $('#champ');
     f.value = '';
-    f.setAttribute('inputmode', S.settings.stylus && !G.showKeyboard ? 'none' : 'text');
-    show($('#btn-clavier-virtuel'), !!S.settings.stylus && !G.showKeyboard);
-    if (G.showKeyboard) setTimeout(() => f.focus(), 50);
+    const direct = !!S.settings.stylusDirect && !G.showKeyboard;
+    f.setAttribute('inputmode', direct ? 'none' : 'text');
+    show($('#btn-clavier-virtuel'), direct);
+    if (!direct) setTimeout(() => f.focus(), 50);
   }
 
   function closeKeyboard() {
@@ -213,7 +213,7 @@
     box.innerHTML = '';
     if (G.sentence) {
       // phrase avec le mot caché : le contexte aide sans donner l'orthographe
-      const masked = G.sentence.replace(new RegExp(escapeRe(G.word), 'gi'), '▢'.repeat(Math.min(8, G.word.length)));
+      const masked = maskWord(G.sentence, G.word);
       box.appendChild(el('p', 'phrase', masked));
     }
     if (G.mode !== 'choix') {
@@ -232,6 +232,16 @@
       Speech.say([G.sentence]);
     }
     show(box, true);
+  }
+
+  /** Cache le mot dans la phrase (avec ou sans son article / pronom). */
+  function maskWord(sentence, word) {
+    const box = (w) => '▢'.repeat(Math.min(8, w.length));
+    const re = (w) => new RegExp('(?<!\\p{L})' + escapeRe(w).replace(/'/g, "['’]") + '(?!\\p{L})', 'giu');
+    let out = sentence.replace(re(word), box(word));
+    const core = word.split(/[\s'’]+/).pop();
+    if (core && core.length > 2 && core !== word) out = out.replace(re(core), box(core));
+    return out;
   }
 
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -274,7 +284,7 @@
     const res = $('#reponse-tuiles'), pool = $('#reserve-tuiles');
     res.innerHTML = ''; pool.innerHTML = '';
     G.tiles.answer.forEach((t, k) => {
-      const b = el('button', 'tuile mot', t.c);
+      const b = el('button', 'tuile mot', t.c === ' ' ? '␣' : t.c);
       b.type = 'button';
       b.setAttribute('aria-label', 'Retirer la lettre ' + t.c);
       b.addEventListener('click', () => { Sound.tap(); G.tiles.answer.splice(k, 1); G.tiles.pool.push(t); drawTiles(); });
@@ -282,9 +292,9 @@
     });
     if (!G.tiles.answer.length) res.appendChild(el('span', 'vide', 'Touche ou glisse les lettres ici'));
     G.tiles.pool.forEach((t) => {
-      const b = el('button', 'tuile mot', t.c);
+      const b = el('button', 'tuile mot', t.c === ' ' ? '␣' : t.c);
       b.type = 'button';
-      b.setAttribute('aria-label', 'Lettre ' + t.c);
+      b.setAttribute('aria-label', t.c === ' ' ? 'Espace' : 'Lettre ' + t.c);
       enableDrag(b, t);
       pool.appendChild(b);
     });
@@ -598,7 +608,7 @@
     $('#opt-cursive').checked = !!S.settings.cursive;
     $('#opt-son').checked = !!S.settings.sound;
     $('#opt-saisie').value = S.settings.input;
-    $('#opt-stylet').checked = !!S.settings.stylus;
+    $('#opt-stylet').checked = !!S.settings.stylusDirect;
     $('#voix').textContent = Speech.available ? (Speech.voiceName() || 'aucune voix française trouvée') : 'synthèse vocale indisponible';
     show($('#liste-ok'), false);
     show($('#semaine-ok'), false);
@@ -708,7 +718,7 @@
   $('#jour-dictee').addEventListener('change', (e) => { S.dictationDay = Number(e.target.value); Store.save(); });
   $('#opt-cursive').addEventListener('change', (e) => { S.settings.cursive = e.target.checked; Store.save(); applySettings(); });
   $('#opt-son').addEventListener('change', (e) => { S.settings.sound = e.target.checked; Store.save(); applySettings(); });
-  $('#opt-stylet').addEventListener('change', (e) => { S.settings.stylus = e.target.checked; Store.save(); });
+  $('#opt-stylet').addEventListener('change', (e) => { S.settings.stylusDirect = e.target.checked; Store.save(); });
   $('#opt-saisie').addEventListener('change', (e) => { S.settings.input = e.target.value; Store.save(); });
 
   /* ---------------- Décor, clavier virtuel, hors ligne ---------------- */
@@ -738,7 +748,39 @@
   // Test automatique / débogage : accès à l'état depuis la console.
   window.DicteeApp = { get state() { return S; }, get game() { return G; }, startSession, renderHome };
 
+  /**
+   * Liste publiée : si le fichier liste.txt du site a changé depuis la
+   * dernière fois, il devient la liste de la semaine (nouvelle semaine).
+   * Les mots pas encore sus d'une liste publiée précédente restent en révision.
+   */
+  async function checkPublishedList() {
+    let text;
+    try {
+      const res = await fetch('liste.txt', { cache: 'no-cache' });
+      if (!res.ok) return;
+      text = await res.text();
+    } catch (e) { return; }
+    const words = Store.parseList(text);
+    if (!words.length) return;
+    const id = hashText(text);
+    if (S.publishedListId === id) return;
+    const hadPublished = !!S.publishedListId;
+    Store.newWeek(text, hadPublished);
+    S = Store.get();
+    S.publishedListId = id;
+    S.listTitle = Store.listTitle(text);
+    Store.save();
+    if (!$('#ecran-accueil').hidden) renderHome();
+  }
+
+  function hashText(t) {
+    let h = 5381;
+    for (const c of t.replace(/\r/g, '').trim()) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0;
+    return h.toString(36);
+  }
+
   applySettings();
   drawDecor();
   renderHome();
+  checkPublishedList();
 })();

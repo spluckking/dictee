@@ -10,7 +10,7 @@
  *   progress: { mot: étatLeitner },  // voir leitner.js
  *   blanche: [{ date, score, total }],
  *   world: { blocks: ['terre', 'pierre', …] },   // blocs posés, dans l'ordre
- *   settings: { sound, cursive, input: 'clavier' | 'tuiles', stylus: true = pas de clavier virtuel },
+ *   settings: { sound, cursive, input: 'clavier' | 'tuiles', stylusDirect: false (true = pas de clavier virtuel automatique) },
  *   stats: { lastDay, sessionsToday }
  * }
  */
@@ -36,10 +36,16 @@
   /** Lit le texte collé par le parent : « mot | phrase », un par ligne. */
   function parseList(text) {
     const seen = {};
-    return String(text || '').split(/\r?\n/).map((line) => {
+    return String(text || '').split(/\r?\n/).filter((line) => !/^\s*#/.test(line)).map((line) => {
       const [w, ...rest] = line.split('|');
-      return { w: (w || '').normalize('NFC').replace(/\s+/g, ' ').trim(), sentence: rest.join('|').trim() };
+      return { w: (w || '').normalize('NFC').replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim(), sentence: rest.join('|').trim() };
     }).filter((x) => x.w && !seen[x.w] && (seen[x.w] = true));
+  }
+
+  /** Titre d'une liste publiée : première ligne « # Titre ». */
+  function listTitle(text) {
+    const m = String(text || '').match(/^\s*#\s*(.+)$/m);
+    return m ? m[1].trim() : '';
   }
 
   function listToText(words) {
@@ -56,7 +62,7 @@
       progress: {},
       blanche: [],
       world: { blocks: [] },
-      settings: { sound: true, cursive: false, input: 'clavier', stylus: true },
+      settings: { sound: true, cursive: false, input: 'clavier', stylusDirect: false },
       stats: { lastDay: null, sessionsToday: 0 }
     };
   }
@@ -132,5 +138,5 @@
   }
 
   root.Store = { KEY, SAMPLE, parseList, listToText, load, save, get, allWords, findWord,
-    setList, missedWords, newWeek, addBlocks };
+    setList, missedWords, newWeek, addBlocks, listTitle };
 })(self);
