@@ -142,3 +142,31 @@ test('mode du jour : reconnaissance en début de semaine, production à la fin',
   assert.equal(L.dailyMode(1), 'blanche');
   assert.equal(L.dailyMode(0), 'flash');
 });
+
+test('première séance : tous les mots, sans limite de nombre ni de durée', () => {
+  const words = Array.from({ length: 22 }, (_, i) => 'm' + i);
+  const plan = L.planSession(words, {}, MON, 15);
+  assert.equal(plan.discovery, true);
+  assert.equal(plan.words.length, 22);
+  const s = new L.Session(plan.words, Object.assign({ now: 0 }, plan.options));
+  let n = 0;
+  while (s.next(60 * 60 * 1000)) { n++; s.report('x', true); }
+  assert.equal(n, 22, 'les 22 mots passent, même après une heure');
+});
+
+test('ensuite : révisions espacées limitées à 15', () => {
+  const words = Array.from({ length: 22 }, (_, i) => 'm' + i);
+  const progress = {};
+  words.forEach((w) => { progress[w] = { box: 1, fail: 0, lastSeen: MON, nextDue: TUE }; });
+  const plan = L.planSession(words, progress, TUE, 15);
+  assert.equal(plan.discovery, false);
+  assert.equal(plan.words.length, 15);
+  assert.equal(plan.options.maxAttempts, 15);
+});
+
+test('un mot ajouté en cours de semaine relance une séance complète, nouveau mot en tête', () => {
+  const progress = { a: { box: 2, fail: 0, lastSeen: MON, nextDue: WED }, b: { box: 1, fail: 0, lastSeen: MON, nextDue: TUE } };
+  const plan = L.planSession(['a', 'b', 'c'], progress, TUE, 15);
+  assert.equal(plan.discovery, true);
+  assert.deepEqual(plan.words, ['c', 'b', 'a']);
+});

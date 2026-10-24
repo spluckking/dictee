@@ -10,7 +10,7 @@
  *   progress: { mot: étatLeitner },  // voir leitner.js
  *   blanche: [{ date, score, total }],
  *   world: { blocks: ['terre', 'pierre', …] },   // blocs posés, dans l'ordre
- *   settings: { sound: true, cursive: false, input: 'clavier' | 'tuiles' },
+ *   settings: { sound, cursive, input: 'clavier' | 'tuiles', stylus: true = pas de clavier virtuel },
  *   stats: { lastDay, sessionsToday }
  * }
  */
@@ -56,7 +56,7 @@
       progress: {},
       blanche: [],
       world: { blocks: [] },
-      settings: { sound: true, cursive: false, input: 'clavier' },
+      settings: { sound: true, cursive: false, input: 'clavier', stylus: true },
       stats: { lastDay: null, sessionsToday: 0 }
     };
   }

@@ -147,6 +147,28 @@
     return list;
   }
 
+  /**
+   * Plan de la séance.
+   * - Découverte : tant qu'un mot de la liste n'a jamais été vu (début de
+   *   semaine, mot ajouté), la séance présente TOUS les mots en une fois,
+   *   sans limite de nombre ni de durée.
+   * - Ensuite : révisions espacées (mots dus), 15 mots ou 10 minutes.
+   * Renvoie { discovery, words, options } (options pour new Session).
+   */
+  function planSession(words, progress, today, max) {
+    const unseen = words.filter((w) => !progress[w] || !progress[w].lastSeen);
+    if (unseen.length) {
+      // les mots jamais vus d'abord, puis les autres (les plus fragiles en premier)
+      const seen = words.filter((w) => unseen.indexOf(w) < 0)
+        .sort((a, b) => progress[a].box - progress[b].box);
+      const list = unseen.concat(seen);
+      return { discovery: true, words: list,
+        options: { maxAttempts: list.length * 3, maxMs: Infinity } };
+    }
+    return { discovery: false, words: pickSessionWords(words, progress, today, max || 15),
+      options: { maxAttempts: max || 15 } };
+  }
+
   /* ---------- File d'attente d'une séance ---------- */
 
   /**
@@ -216,6 +238,6 @@
   return {
     RECOGNITION_MODES, todayStr, addDays, diffDays, daysUntilDictation,
     intervalFor, nextDueDate, newWordState, isDue, applyResult, topErrors,
-    pickSessionWords, Session, dailyMode
+    pickSessionWords, planSession, Session, dailyMode
   };
 });

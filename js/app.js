@@ -92,17 +92,22 @@
     Sound.unlock();
     const words = Store.allWords();
     if (!words.length) { alert('La liste est vide : demande à un adulte de l\'ajouter dans l\'espace parent.'); return; }
-    let list;
-    if (mode === 'blanche') list = shuffle(words);
-    else list = Leitner.pickSessionWords(words, S.progress, today(), 15);
+    let list, options, discovery = false;
+    if (mode === 'blanche') {
+      list = shuffle(words);
+      options = { maxAttempts: words.length, maxMs: Infinity, maxRetries: 0 };
+    } else {
+      // première séance de la semaine : tous les mots ; ensuite : révisions espacées
+      const plan = Leitner.planSession(words, S.progress, today(), 15);
+      list = plan.words; options = plan.options; discovery = plan.discovery;
+    }
     G = {
       mode,
-      session: new Leitner.Session(list, mode === 'blanche'
-        ? { maxAttempts: words.length, maxMs: 60 * 60 * 1000, maxRetries: 0 }
-        : { maxAttempts: 15 }),
+      discovery,
+      session: new Leitner.Session(list, options),
       loot: [],
       blanche: [],
-      total: mode === 'blanche' ? list.length : Math.min(15, list.length)
+      total: list.length
     };
     showScreen('jeu');
     $('#nom-mode').textContent = MODES[mode];
@@ -115,6 +120,7 @@
   }
 
   function nextWord() {
+    closeKeyboard();
     const w = G.session.next();
     if (!w) return endSession();
     const info = Store.findWord(w) || { w, sentence: '' };
@@ -125,7 +131,8 @@
     G.phase = 'saisie';
     G.answered = false;
     const n = G.session.attempts;
-    $('#compteur-mot').textContent = 'Mot ' + n + (G.mode === 'blanche' ? ' / ' + G.total : '');
+    $('#compteur-mot').textContent = (G.discovery ? 'Découverte · ' : '') + 'Mot ' + n +
+      (G.mode === 'blanche' || G.discovery ? ' / ' + G.total : '');
     resetZones();
     const mode = G.mode;
     if (mode === 'regarder') return lookCoverWrite();
@@ -154,12 +161,26 @@
     else openKeyboard();
   }
 
+  /**
+   * Champ de saisie. On ne donne PAS le focus automatiquement : sinon le
+   * clavier virtuel s'ouvre à chaque mot. Avec le stylet, l'enfant écrit
+   * directement dans la case. Option « stylet » (par défaut) :
+   * inputmode="none" empêche aussi le clavier de s'ouvrir quand on touche la
+   * case ; le bouton ⌨️ le rouvre au besoin.
+   */
   function openKeyboard() {
     show($('#saisie-tuiles'), false);
     show($('#saisie-clavier'), true);
     const f = $('#champ');
     f.value = '';
-    setTimeout(() => f.focus(), 50);
+    f.setAttribute('inputmode', S.settings.stylus && !G.showKeyboard ? 'none' : 'text');
+    show($('#btn-clavier-virtuel'), !!S.settings.stylus && !G.showKeyboard);
+    if (G.showKeyboard) setTimeout(() => f.focus(), 50);
+  }
+
+  function closeKeyboard() {
+    const f = $('#champ');
+    if (document.activeElement === f) f.blur();
   }
 
   /* ----- Regarder, cacher, écrire ----- */
@@ -325,8 +346,8 @@
 
   function submitKeyboard() {
     const v = Align.normalize($('#champ').value, G.word);
-    if (!v) { $('#champ').focus(); return; }
-    $('#champ').blur();
+    if (!v) return;
+    closeKeyboard();
     show($('#saisie-clavier'), false);
     $('#reconnu').textContent = v;
     G.pending = v;
@@ -577,6 +598,7 @@
     $('#opt-cursive').checked = !!S.settings.cursive;
     $('#opt-son').checked = !!S.settings.sound;
     $('#opt-saisie').value = S.settings.input;
+    $('#opt-stylet').checked = !!S.settings.stylus;
     $('#voix').textContent = Speech.available ? (Speech.voiceName() || 'aucune voix française trouvée') : 'synthèse vocale indisponible';
     show($('#liste-ok'), false);
     show($('#semaine-ok'), false);
@@ -637,6 +659,7 @@
       renderTiles(G.word, G.mode !== 'lettres');
     },
     'vers-clavier'() { S.settings.input = 'clavier'; Store.save(); openKeyboard(); },
+    'clavier-virtuel'() { G.showKeyboard = true; openKeyboard(); },
     'valider-tuiles': submitTiles,
     'effacer-tuiles'() { G.tiles.pool = G.tiles.pool.concat(G.tiles.answer); G.tiles.answer = []; drawTiles(); },
     confirmer() { show($('#confirmation'), false); evaluate(G.pending); },
@@ -685,6 +708,7 @@
   $('#jour-dictee').addEventListener('change', (e) => { S.dictationDay = Number(e.target.value); Store.save(); });
   $('#opt-cursive').addEventListener('change', (e) => { S.settings.cursive = e.target.checked; Store.save(); applySettings(); });
   $('#opt-son').addEventListener('change', (e) => { S.settings.sound = e.target.checked; Store.save(); applySettings(); });
+  $('#opt-stylet').addEventListener('change', (e) => { S.settings.stylus = e.target.checked; Store.save(); });
   $('#opt-saisie').addEventListener('change', (e) => { S.settings.input = e.target.value; Store.save(); });
 
   /* ---------------- Décor, clavier virtuel, hors ligne ---------------- */

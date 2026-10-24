@@ -28,7 +28,7 @@ Application web progressive (PWA) pour aider un enfant de CE2 à apprendre sa li
    - aucune révision n'est planifiée après la veille de la dictée : tout est revu ce jour-là ;
    - les modes de reconnaissance (Le bon mot, Lettres mélangées) ne font pas dépasser la boîte 2.
 3. **Feedback immédiat et bienveillant** : la réponse est alignée sur le mot juste (Levenshtein), lettres justes en vert, lettres fausses, manquantes ou en trop en orange. Une erreur d'accent seule affiche « Presque ! Regarde l'accent ». Sinon : « On réessaie ! ». Pas de vie perdue, pas de chrono, pas de son négatif.
-4. **Séances courtes** : 15 mots ou 10 minutes, puis un écran de félicitations.
+4. **Première séance de la semaine** : tous les mots de la liste, en une fois, quel que soit leur nombre. **Ensuite, séances courtes** de révision espacée : 15 mots ou 10 minutes, puis un écran de félicitations. Un mot ajouté en cours de semaine relance une séance complète.
 5. **Double codage** : le bouton « Indice » montre la phrase (mot masqué) et les syllabes pendant 3 secondes, et les lit. Un mot réussi avec indice ne monte pas de boîte.
 
 **Mode du jour** (dictée le vendredi) : Le bon mot jusqu'au lundi, Lettres mélangées le mardi, Regarder-cacher-écrire le mercredi, Dictée blanche le jeudi, Dictée-flash le jour même. L'enfant peut toujours choisir un autre mode.
@@ -113,6 +113,8 @@ Sinon le clavier pourrait corriger les fautes à la place de l'enfant. L'appli d
 
 **Paramètres → Fonctions avancées → S Pen → S Pen vers texte** : activer. L'enfant écrit directement dans le champ avec le S Pen. Sur le clavier Samsung, couper aussi **Texte prédictif** et **Correction automatique** dans **Paramètres → Gestion globale → Paramètres du Clavier Samsung**.
 
+**Écriture directe au stylet** (réglage activé par défaut dans l'espace parent) : l'appli ne place pas le curseur dans la case à chaque mot et le clavier virtuel ne s'ouvre pas tout seul. L'enfant écrit directement dans la case avec le stylet. Le bouton ⌨️ affiche le clavier si besoin. Si l'écriture au stylet ne fonctionne pas sur la tablette, décocher ce réglage.
+
 Le clavier peut mal reconnaître une lettre : après chaque saisie, l'appli affiche en gros ce qui a été reconnu avec « C'est ce que j'ai écrit » et « Effacer, je recommence ». Si l'écriture pose problème, le bouton **Tuiles** permet de répondre sans clavier.
 
 ## Espace parent
@@ -128,7 +130,7 @@ Bouton ⚙️ en haut de l'accueil, puis répondre à la multiplication.
 - **Jour de la dictée** : vendredi par défaut.
 - **Progression** : boîte de chaque mot, réussites (dont avec indice), erreurs, erreurs fréquentes, prochaine révision, scores des dictées blanches.
 - **Nouvelle semaine** : coller la nouvelle liste, puis « Commencer une nouvelle semaine ». Les mots pas encore en boîte 3 peuvent être gardés en révision. Le monde de l'enfant est conservé.
-- **Réglages** : écriture cursive (police Playwrite FR Moderne), sons, saisie par défaut (clavier ou tuiles), test de la voix.
+- **Réglages** : écriture au stylet sans clavier virtuel, écriture cursive (police Playwrite FR Moderne), sons, saisie par défaut (clavier ou tuiles), test de la voix.
 
 Si aucune voix française n'est trouvée : **Paramètres Android → Système → Langues → Synthèse vocale** → moteur Google → installer les données vocales **Français (France)**.
 
