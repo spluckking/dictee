@@ -764,8 +764,13 @@
     if (!words.length) return;
     const id = hashText(text);
     if (S.publishedListId === id) return;
-    const hadPublished = !!S.publishedListId;
-    Store.newWeek(text, hadPublished);
+    const title = Store.listTitle(text);
+    if (S.publishedListId && title && title === S.listTitle) {
+      // même liste corrigée (même titre) : on garde la progression des mots inchangés
+      Store.setList(text);
+    } else {
+      Store.newWeek(text, !!S.publishedListId);
+    }
     S = Store.get();
     S.publishedListId = id;
     S.listTitle = Store.listTitle(text);
