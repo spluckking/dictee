@@ -187,34 +187,64 @@ test('auto-évaluation « j\'hésite » : réussite comptée, mais pas de monté
   assert.equal(s.unsure, 1);
 });
 
-test('grande révision : 2, 7, 14, 30 jours puis retrait', () => {
+test('phase 2 : un mot toujours réussi s\'espace puis est retiré (≥ 5 semaines)', () => {
   let e = L.archiveEntry({ box: 2 }, MON);
-  assert.equal(e.level, 0);
-  assert.equal(e.nextDue, L.addDays(MON, 2));
-  assert.equal(L.archiveEntry({ box: 3 }, MON).nextDue, L.addDays(MON, 7), 'un mot su commence plus loin');
-  let day = MON, r;
-  const seen = [];
-  for (let i = 0; i < 4; i++) {
+  assert.equal(e.nextDue, TUE, 'un mot pas encore su revient vite');
+  assert.equal(L.archiveEntry({ box: 3 }, MON).interval, 3);
+  let day = MON, r, n = 0;
+  const gaps = [];
+  do {
     day = e.nextDue;
-    r = L.applyArchiveResult(e, true, day);
-    e = r.entry;
-    seen.push(L.diffDays(day, e.nextDue || day));
-  }
+    r = L.applyArchiveResult(e, { correct: true }, day);
+    e = r.entry; n++;
+    if (!r.retired) gaps.push(e.interval);
+  } while (!r.retired && n < 20);
   assert.equal(r.retired, true);
-  assert.deepEqual(seen.slice(0, 3), [7, 14, 30]);
+  assert.ok(n >= 4 && n <= 7, 'retiré après ' + n + ' révisions');
+  for (let i = 1; i < gaps.length; i++) assert.ok(gaps[i] > gaps[i - 1], 'intervalles croissants');
+  assert.ok(L.diffDays(MON, day) >= 30, 'au moins ~5 semaines avant le retrait');
 });
 
-test('grande révision : une erreur fait recommencer, revu le lendemain', () => {
-  const r = L.applyArchiveResult({ level: 2, ok: 2, fail: 0, nextDue: MON }, false, MON);
-  assert.equal(r.retired, false);
-  assert.equal(r.entry.level, 0);
+test('phase 2 : une erreur fait revenir le mot demain et plus souvent ensuite', () => {
+  const start = { interval: 10, ease: 2.2, streak: 3, ok: 3, fail: 0, nextDue: MON };
+  const r = L.applyArchiveResult(start, { correct: false }, MON);
   assert.equal(r.entry.nextDue, TUE);
+  assert.equal(r.entry.streak, 0);
+  assert.ok(r.entry.ease < 2.2);
+  // le mot raté s'espace moins vite qu'un mot jamais raté
+  const easy = L.applyArchiveResult({ interval: 4, ease: 2.2, streak: 1, ok: 1, fail: 0 }, { correct: true }, MON).entry;
+  const hard = L.applyArchiveResult({ interval: 4, ease: r.entry.ease, streak: 1, ok: 1, fail: 1 }, { correct: true }, MON).entry;
+  assert.ok(hard.interval < easy.interval);
 });
 
-test('grande révision : au plus 5 mots dus, les plus en retard d\'abord', () => {
+test('phase 2 : réussite hésitante = petit pas seulement', () => {
+  const r = L.applyArchiveResult({ interval: 10, ease: 2.2, streak: 2, ok: 2, fail: 0 }, { correct: true, unsure: true }, MON);
+  assert.equal(r.entry.interval, 12);
+  assert.equal(r.entry.streak, 2);
+  assert.equal(r.retired, false);
+});
+
+test('phase 2 : ancien format converti', () => {
+  const e = L.migrateEntry({ level: 2, nextDue: MON, ok: 2, fail: 0 });
+  assert.equal(e.interval, 14);
+  assert.equal(e.streak, 2);
+});
+
+test('phase 2 : 8 mots au plus, les plus en retard d\'abord, toutes semaines mélangées', () => {
   const a = {};
-  'abcdefg'.split('').forEach((w, i) => { a[w] = { level: 0, nextDue: L.addDays(MON, i - 6) }; });
-  a.z = { level: 0, nextDue: FRI };
-  assert.deepEqual(L.dueArchive(a, MON), ['a', 'b', 'c', 'd', 'e']);
-  assert.ok(!L.dueArchive(a, MON, 10).includes('z'));
+  'abcdefghij'.split('').forEach((w, i) => { a[w] = { interval: 1, ease: 2.2, nextDue: L.addDays(MON, -i) }; });
+  a.z = { interval: 1, ease: 2.2, nextDue: FRI };
+  const due = L.dueArchive(a, MON);
+  assert.equal(due.length, 8);
+  assert.deepEqual(due.slice(0, 3), ['j', 'i', 'h']);
+  assert.ok(!due.includes('z'));
+});
+
+test('phase 2 : un mot raté puis réécrit le même jour ne remonte pas', () => {
+  const d = '2026-10-25';
+  let e = L.archiveEntry({ box: 3 }, d);
+  e = L.applyArchiveResult(e, { correct: false }, d).entry;
+  const again = L.applyArchiveResult(e, { correct: true }, d).entry;
+  assert.equal(again.interval, 1);
+  assert.equal(again.nextDue, '2026-10-26');
 });

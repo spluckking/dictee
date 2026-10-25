@@ -10,8 +10,9 @@
  *   progress: { mot: étatLeitner },  // voir leitner.js
  *   blanche: [{ date, score, total }],
  *   world: { blocks: ['terre', 'pierre', …] },   // blocs posés, dans l'ordre
- *   archive: { mot: { level, nextDue, sentence, week, ok, fail } }, // phase 2 : grande révision
- *   retired: [{ w, week, date }],    // mots sus pour toujours (sortis de la grande révision)
+ *   archive: { mot: { interval, ease, streak, nextDue, sentence, week, ok, fail } }, // phase 2 : la mine
+ *   mine: { depth, found: [{ id, depth, date }], lastDay, today }, // récompenses de la phase 2
+ *   retired: [{ w, week, date }],    // mots sus pour toujours (sortis de la mine)
  *   settings: { sound, cursive, input: 'clavier' | 'tuiles', stylusDirect: false (true = pas de clavier virtuel automatique) },
  *   stats: { lastDay, sessionsToday }
  * }
@@ -66,6 +67,7 @@
       world: { blocks: [] },
       archive: {},
       retired: [],
+      mine: { depth: 0, found: [], lastDay: null, today: 0 },
       settings: { sound: true, cursive: false, input: 'clavier', stylusDirect: false },
       stats: { lastDay: null, sessionsToday: 0 }
     };
@@ -81,8 +83,11 @@
       state = saved && saved.version === 1 ? Object.assign(d, saved, {
         settings: Object.assign(d.settings, saved.settings),
         world: Object.assign(d.world, saved.world),
-        stats: Object.assign(d.stats, saved.stats)
+        stats: Object.assign(d.stats, saved.stats),
+        mine: Object.assign(d.mine, saved.mine)
       }) : d;
+      // anciennes entrées de la grande révision (paliers fixes) → mémoire par mot
+      Object.keys(state.archive).forEach((w) => { state.archive[w] = Leitner.migrateEntry(state.archive[w]); });
     } catch (e) {
       state = defaults();
     }
@@ -128,7 +133,7 @@
   /**
    * Nouvelle semaine : nouvelle liste, progression remise à zéro. Le monde est
    * conservé. Si `archiveOld`, les mots de la semaine qui se termine passent
-   * en grande révision (phase 2), sauf ceux qui reviennent dans la nouvelle liste.
+   * dans la mine des souvenirs (phase 2), sauf ceux qui reviennent dans la nouvelle liste.
    */
   function newWeek(text, archiveOld) {
     const s = get();

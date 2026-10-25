@@ -221,46 +221,86 @@
     return Math.min(this.queue.length, this.maxAttempts - this.attempts);
   };
 
-  /* ---------- Phase 2 : grande révision des semaines passées ---------- */
+  /* ---------- Phase 2 : la mine des souvenirs ---------- */
 
   /**
-   * Quand une nouvelle semaine commence, les mots des semaines précédentes
-   * passent en « grande révision » : ils reviennent après 2, 7, 14 puis 30
-   * jours. Après 4 réussites d'affilée (≈ 2 mois), le mot est retiré : il est
-   * su pour de bon. Une erreur le fait recommencer au début (revu le lendemain).
+   * Quand une nouvelle semaine commence, les mots de la semaine passée
+   * rejoignent la phase 2, où TOUTES les anciennes listes sont mélangées.
+   * Chaque mot y a sa propre mémoire (principe d'Anki, simplifié) :
+   *   - interval : nombre de jours avant de le revoir ;
+   *   - ease     : « facilité » du mot pour l'enfant (1,3 à 3).
+   * Réussite sûre      → l'intervalle est multiplié par la facilité, qui augmente un peu.
+   * Réussite hésitante → l'intervalle grandit à peine (× 1,2), la facilité baisse un peu.
+   * Erreur             → le mot revient le lendemain, et sa facilité baisse :
+   *                      il reviendra plus souvent ensuite.
+   * Retrait : quand une réussite sûre porterait l'intervalle au-delà de
+   * RETIRE_DAYS (≈ 45 jours) après au moins 4 réussites d'affilée,
+   * le mot est su pour de bon (au plus tôt après ≈ 5 semaines sans erreur ;
+   * un mot souvent raté reste bien plus longtemps).
    */
-  const ARCHIVE_INTERVALS = [2, 7, 14, 30];
+  const EASE_START = 2.2, EASE_MIN = 1.3, EASE_MAX = 3;
+  const RETIRE_DAYS = 45, RETIRE_STREAK = 4;
 
-  /** Entrée de grande révision pour un mot de la semaine qui se termine. */
+  /** Entrée de phase 2 pour un mot de la semaine qui se termine. */
   function archiveEntry(state, today, extra) {
-    const level = state && state.box === 3 ? 1 : 0;
-    return Object.assign({ level, ok: 0, fail: 0, added: today,
-      nextDue: addDays(today, ARCHIVE_INTERVALS[level]) }, extra || {});
+    const known = state && state.box === 3;
+    const interval = known ? 3 : 1;
+    return Object.assign({ interval, ease: known ? EASE_START : EASE_START - 0.2, streak: 0, ok: 0, fail: 0,
+      added: today, nextDue: addDays(today, interval) }, extra || {});
   }
 
-  /** Résultat d'une grande révision : { entry, retired }. */
-  function applyArchiveResult(entry, correct, today) {
-    const e = Object.assign({}, entry);
+  /** Convertit une entrée de l'ancienne version (niveaux 0 à 3). */
+  function migrateEntry(e) {
+    if (e.interval != null) return e;
+    const interval = [2, 7, 14, 30][e.level || 0] || 2;
+    return Object.assign({}, e, { interval, ease: EASE_START, streak: e.level || 0 });
+  }
+
+  /**
+   * Résultat d'une révision de phase 2.
+   * result = { correct, unsure } → { entry, retired }
+   */
+  function applyArchiveResult(entry, result, today) {
+    const e = migrateEntry(Object.assign({}, entry));
+    // déjà vu aujourd'hui (mot raté puis réécrit dans la même expédition) :
+    // une réussite ne compte pas, le mot reviendra demain comme prévu
+    if (result.correct && e.lastSeen === today) return { entry: e, retired: false };
     e.lastSeen = today;
-    if (correct) {
+    if (result.correct && !result.unsure) {
       e.ok++;
-      e.level++;
-      if (e.level >= ARCHIVE_INTERVALS.length) return { entry: e, retired: true };
-      e.nextDue = addDays(today, ARCHIVE_INTERVALS[e.level]);
+      e.streak++;
+      const next = Math.max(e.interval + 1, Math.round(e.interval * e.ease));
+      e.ease = Math.min(EASE_MAX, Math.round((e.ease + 0.1) * 100) / 100);
+      if (e.streak >= RETIRE_STREAK && next >= RETIRE_DAYS) return { entry: e, retired: true };
+      e.interval = next;
+    } else if (result.correct) {
+      e.ok++;
+      e.interval = Math.max(1, Math.round(e.interval * 1.2));
+      e.ease = Math.max(EASE_MIN, Math.round((e.ease - 0.05) * 100) / 100);
     } else {
       e.fail++;
-      e.level = 0;
-      e.nextDue = addDays(today, 1);
+      e.streak = 0;
+      e.interval = 1;
+      e.ease = Math.max(EASE_MIN, Math.round((e.ease - 0.3) * 100) / 100);
     }
+    e.nextDue = addDays(today, e.interval);
     return { entry: e, retired: false };
   }
 
-  /** Mots de grande révision à revoir aujourd'hui (les plus en retard d'abord). */
+  /**
+   * Mots de phase 2 à revoir aujourd'hui, mélangés toutes semaines confondues.
+   * Priorité : les plus en retard (par rapport à leur intervalle), puis les
+   * plus difficiles (facilité basse).
+   */
   function dueArchive(archive, today, max) {
+    const late = (w) => {
+      const e = migrateEntry(archive[w]);
+      return diffDays(e.nextDue, today) / Math.max(1, e.interval);
+    };
     return Object.keys(archive || {})
       .filter((w) => archive[w].nextDue <= today)
-      .sort((a, b) => archive[a].nextDue.localeCompare(archive[b].nextDue) || archive[a].level - archive[b].level)
-      .slice(0, max == null ? 5 : max);
+      .sort((a, b) => late(b) - late(a) || migrateEntry(archive[a]).ease - migrateEntry(archive[b]).ease)
+      .slice(0, max == null ? 8 : max);
   }
 
   /* ---------- Mode du jour ---------- */
@@ -286,6 +326,6 @@
     RECOGNITION_MODES, todayStr, addDays, diffDays, daysUntilDictation,
     intervalFor, nextDueDate, newWordState, isDue, applyResult, topErrors,
     pickSessionWords, planSession, Session, dailyMode,
-    ARCHIVE_INTERVALS, archiveEntry, applyArchiveResult, dueArchive
+    RETIRE_DAYS, RETIRE_STREAK, archiveEntry, migrateEntry, applyArchiveResult, dueArchive
   };
 });

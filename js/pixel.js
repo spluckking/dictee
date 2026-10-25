@@ -26,7 +26,11 @@
     rubis:    { nom: 'Rubis',     rarete: 3, base: ['#8d9196', '#767a80', '#e0245e'], ore: ['#e0245e', '#ff8fb1'] },
     saphir:   { nom: 'Saphir',    rarete: 3, base: ['#8d9196', '#767a80', '#2f6fe0'], ore: ['#2f6fe0', '#9cc4ff'] },
     amethyste:{ nom: 'Améthyste', rarete: 3, base: ['#8d9196', '#767a80', '#9b4fd8'], ore: ['#9b4fd8', '#d6a8ff'] },
-    herbe:    { nom: 'Herbe',     rarete: 0, base: ['#8a5a36', '#74482a', '#9c6a42'] }
+    herbe:    { nom: 'Herbe',     rarete: 0, base: ['#8a5a36', '#74482a', '#9c6a42'] },
+    // couches de la mine (phase 2), pas des récompenses
+    ardoise:  { nom: 'Ardoise',   rarete: 0, base: ['#4a4f5a', '#3d424c', '#5a606b'] },
+    cristal:  { nom: 'Cristal',   rarete: 0, base: ['#3a2f52', '#2e2542', '#b98cff'], ore: ['#b98cff', '#f0dcff'] },
+    magma:    { nom: 'Magma',     rarete: 0, base: ['#3b1d1a', '#2c1513', '#ff7a1a'], ore: ['#ff7a1a', '#ffd23a'] }
   };
 
   const BY_RARITY = { 1: ['terre', 'planche', 'pierre', 'brique'], 2: ['verre', 'charbon', 'fer', 'cuivre'],
@@ -468,6 +472,146 @@
     return { buildings, scrollTo: Math.max(0, (cur.ox - 2) * bs / dpr) };
   }
 
+  /* ---------- La mine des souvenirs (phase 2) ---------- */
+
+  // Trésors trouvés en creusant (profondeur en blocs). Créations originales.
+  const TREASURES = [
+    { depth: 3, id: 'lanterne', nom: 'une lanterne' },
+    { depth: 8, id: 'champignon', nom: 'un champignon lumineux' },
+    { depth: 15, id: 'fossile', nom: 'un fossile' },
+    { depth: 25, id: 'coffre', nom: 'un coffre' },
+    { depth: 35, id: 'geode', nom: 'une géode' },
+    { depth: 50, id: 'wagonnet', nom: 'un wagonnet' },
+    { depth: 65, id: 'statue', nom: 'une statue d\'or' },
+    { depth: 80, id: 'oeuf', nom: 'un œuf de pierre mystérieux' },
+    { depth: 100, id: 'couronne', nom: 'la couronne de la mine' }
+  ];
+  /** Trésor à une profondeur donnée (après 100 : une géode toutes les 25 couches). */
+  function treasureAt(depth) {
+    const t = TREASURES.find((x) => x.depth === depth);
+    if (t) return t;
+    if (depth > 100 && depth % 25 === 0) return { depth, id: 'geode', nom: 'une géode géante' };
+    return null;
+  }
+  function nextTreasure(depth) {
+    for (let d = depth + 1; d < depth + 200; d++) { const t = treasureAt(d); if (t) return t; }
+    return null;
+  }
+
+  const TREASURE_PAL = {
+    k: '#2b2b2b', y: '#ffd23a', o: '#e0a800', w: '#fff7c2', b: '#8b5a2b', d: '#5a3a22', g: '#c3ccd3', G: '#7d8a93',
+    p: '#b98cff', P: '#7b4fc8', r: '#e0245e', R: '#ff8fb1', c: '#e9e2cf', C: '#bfb59a', m: '#e04848', M: '#ffffff',
+    t: '#4fd2c8', T: '#2f9f98'
+  };
+  const TREASURE_ART = {
+    lanterne: ['..kkkk..', '..k..k..', '.kkkkkk.', '.kyywyk.', '.kywyyk.', '.kyyyyk.', '.kkkkkk.', '..kkkk..'],
+    champignon: ['..tttt..', '.tTttTt.', 'tttTtttt', 'TTTTTTTT', '...cc...', '...cc...', '..cccc..', '........'],
+    fossile: ['..cccc..', '.cCCCCc.', 'cC.cc.Cc', 'cC.cC.Cc', 'cC..cCCc', '.cCcccc.', '..cc....', '........'],
+    coffre: ['.dddddd.', 'dbbbbbbd', 'dbbbbbbd', 'ddddyddd', 'dbbbybbd', 'dbbbbbbd', 'dbbbbbbd', 'dddddddd'],
+    geode: ['..GGGG..', '.GpPpPG.', 'GpPMpPpG', 'GPpPpMPG', 'GpMPpPpG', 'GPpPpPPG', '.GPpPpG.', '..GGGG..'],
+    wagonnet: ['........', 'GggggggG', 'GoyoyooG', 'GooyoooG', 'GGGGGGGG', '.G....G.', 'kk....kk', 'kk....kk'],
+    statue: ['...oo...', '..oyyo..', '..oyyo..', '...oo...', '.oyyyyo.', '..oyyo..', '..oyyo..', '.oooooo.'],
+    oeuf: ['...cc...', '..cCcc..', '.ccctcc.', '.cCcccc.', 'cctcccCc', 'ccccCcc.', '.cccccc.', '..cccc..'],
+    couronne: ['........', 'y..y..y.', 'yy.yy.yy', 'yryyyryy', 'yyyyyyyy', 'oooooooo', 'yyyyyyyy', '........']
+  };
+
+  /** Image (data URL) d'un trésor. */
+  function treasureIcon(id, size) {
+    size = size || 48;
+    const k = 't' + id + size;
+    if (iconCache[k]) return iconCache[k];
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const g = c.getContext('2d');
+    drawSprite(g, TREASURE_ART[id] || TREASURE_ART.geode, TREASURE_PAL, 0, 0, size / 8);
+    return (iconCache[k] = c.toDataURL());
+  }
+
+  /** Couche de roche selon la profondeur. */
+  function layerAt(d) {
+    if (d < 0) return 'herbe';
+    if (d < 10) return 'terre';
+    if (d < 30) return 'pierre';
+    if (d < 60) return 'ardoise';
+    if (d < 100) return 'cristal';
+    return 'magma';
+  }
+  function layerName(d) {
+    return d < 10 ? 'la terre' : d < 30 ? 'la pierre' : d < 60 ? 'la roche sombre' : d < 100 ? 'la grotte de cristal' : 'le cœur de magma';
+  }
+
+  /**
+   * Coupe de la mine autour de la profondeur actuelle : le puits creusé au
+   * centre, le mineur au fond, les trésors trouvés dans les parois, et un
+   * « ? » pour le prochain trésor.
+   */
+  function drawMine(canvas, depth, viewW, viewH) {
+    const dpr = Math.min(2, root.devicePixelRatio || 1);
+    const W = Math.round(viewW * dpr), H = Math.round(viewH * dpr);
+    canvas.width = W; canvas.height = H;
+    canvas.style.width = viewW + 'px'; canvas.style.height = viewH + 'px';
+    const g = canvas.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    const rows = 9;
+    const bs = Math.floor(H / rows);
+    const cols = Math.ceil(W / bs);
+    const mid = Math.floor(cols / 2);
+    const top = depth - 6; // profondeur de la première rangée affichée
+    for (let r = 0; r < rows + 1; r++) {
+      const d = top + r;
+      for (let c = 0; c < cols; c++) {
+        const x = c * bs, y = r * bs;
+        if (d < 0) { g.fillStyle = '#8ad1ff'; g.fillRect(x, y, bs, bs); continue; }
+        const dug = c === mid && d <= depth;
+        if (dug) {
+          g.fillStyle = d === depth ? '#1d1a17' : '#2a2520';
+          g.fillRect(x, y, bs, bs);
+          // échelle
+          g.fillStyle = '#8b5a2b';
+          g.fillRect(x + bs * 0.2, y, bs * 0.1, bs); g.fillRect(x + bs * 0.7, y, bs * 0.1, bs);
+          g.fillRect(x + bs * 0.2, y + bs * 0.45, bs * 0.6, bs * 0.1);
+        } else {
+          drawBlock(g, layerAt(d), x, y, bs);
+        }
+        // trésors déjà trouvés : dans la paroi à côté du puits
+        const t = treasureAt(d);
+        if (t && c === mid + 1 && d <= depth) {
+          g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + 2, y + 2, bs - 4, bs - 4);
+          const img = treasureCanvas(t.id);
+          g.drawImage(img, x + bs * 0.12, y + bs * 0.12, bs * 0.76, bs * 0.76);
+        }
+        if (t && c === mid + 1 && d > depth) {
+          g.fillStyle = 'rgba(255,255,255,0.85)';
+          g.font = 'bold ' + Math.round(bs * 0.6) + 'px sans-serif';
+          g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.fillText('?', x + bs / 2, y + bs / 2);
+        }
+      }
+    }
+    // mineur au fond du puits
+    const ms = Math.max(2, Math.floor(bs / 18));
+    drawMiner(g, mid * bs + bs / 2 - 6 * ms, (depth - top + 1) * bs - 16 * ms, ms, REST);
+    // repères de profondeur
+    g.fillStyle = 'rgba(0,0,0,0.55)';
+    g.fillRect(0, 0, bs * 1.6, H);
+    g.fillStyle = '#fff';
+    g.font = Math.round(bs * 0.32) + 'px sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let r = 0; r < rows; r++) {
+      const d = top + r;
+      if (d >= 0 && d % 5 === 0) g.fillText(String(d), bs * 0.8, r * bs + bs / 2);
+    }
+  }
+
+  const treasureCanvases = {};
+  function treasureCanvas(id) {
+    if (treasureCanvases[id]) return treasureCanvases[id];
+    const c = document.createElement('canvas');
+    c.width = c.height = 8;
+    drawSprite(c.getContext('2d'), TREASURE_ART[id] || TREASURE_ART.geode, TREASURE_PAL, 0, 0, 1);
+    return (treasureCanvases[id] = c);
+  }
+
   /** Icône de l'appli (utilisée pour générer les PNG du manifest). */
   function drawAppIcon(canvas, size, maskable) {
     canvas.width = canvas.height = size;
@@ -485,5 +629,6 @@
   }
 
   root.Pixel = { MATERIALS, BY_RARITY, randomMaterial, texture, drawBlock, blockIcon, drawMiner,
+    TREASURES, treasureAt, nextTreasure, treasureIcon, layerName, drawMine,
     MinerScene, drawLandscape, PLANS, slotsOf, layout, drawWorld, drawAppIcon };
 })(self);

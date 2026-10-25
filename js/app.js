@@ -12,7 +12,7 @@
  *
  * Méthodes mélangées : répétition espacée (leitner.js), rappel actif et
  * auto-évaluation, palais mental + fractionnement + carte mentale (traps.js),
- * et phase 2 « grande révision » des semaines passées.
+ * et phase 2 « la mine des souvenirs » des semaines passées.
  */
 (function () {
   'use strict';
@@ -25,8 +25,11 @@
     regarder: 'Regarder, cacher, écrire',
     lettres: 'Lettres mélangées',
     choix: 'Le bon mot',
-    blanche: 'Dictée blanche'
+    blanche: 'Dictée blanche',
+    mine: 'Expédition dans la mine'
   };
+  const MINE_SIZE = 10;      // mots par expédition
+  const MINE_PER_DAY = 2;    // expéditions par jour au plus (la 2e seulement s'il reste des mots)
   const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   const BRAVO = ['Bravo !', 'Super !', 'Génial !', 'Bien joué !', 'Excellent !', 'Parfait !'];
 
@@ -81,12 +84,12 @@
     const su = words.filter((w) => S.progress[w] && S.progress[w].box === 3).length;
     $('#resume-mots').textContent = (S.listTitle ? S.listTitle + ' · ' : '') + words.length + ' mots cette semaine · ' + su + ' déjà sus · ' +
       (due ? due + ' à revoir aujourd\'hui' : 'tout est revu pour aujourd\'hui !');
+    // phase 2 : bouton de la mine, visible dès qu'il y a d'anciens mots
     const nArch = Object.keys(S.archive || {}).length;
-    const dueArch = Leitner.dueArchive(S.archive, today(), 99).length;
-    $('#resume-revision').textContent = nArch
-      ? 'Grande révision : ' + nArch + ' mots des semaines passées' + (dueArch ? ' (' + dueArch + ' à revoir aujourd\'hui)' : '') +
-        (S.retired && S.retired.length ? ' · ' + S.retired.length + ' sus pour toujours' : '')
-      : '';
+    show($('#btn-mine'), nArch > 0 || S.retired.length > 0);
+    $('#btn-mine').classList.toggle('brille', mineOpen());
+    $('#btn-mine-info').textContent = mineOpen() ? 'Une expédition t\'attend !' : 'Reviens demain';
+    $('#resume-revision').textContent = '';
     const mode = Leitner.dailyMode(d);
     $('#nom-mode-du-jour').textContent = MODES[mode];
     $('#btn-mode-du-jour').dataset.mode = mode;
@@ -102,8 +105,8 @@
   function startSession(mode) {
     Sound.unlock();
     const words = Store.allWords();
-    const archDue = mode === 'blanche' ? [] : Leitner.dueArchive(S.archive, today(), 5).filter((w) => words.indexOf(w) < 0);
-    if (!words.length && !archDue.length) { alert('La liste est vide : demande à un adulte de l\'ajouter dans l\'espace parent.'); return; }
+    const archDue = [];
+    if (!words.length) { alert('La liste est vide : demande à un adulte de l\'ajouter dans l\'espace parent.'); return; }
     let list, options, discovery = false, packets = {}, packetCount = 0;
     if (mode === 'blanche') {
       list = shuffle(words);
@@ -120,10 +123,6 @@
         sorted.forEach((w, i) => { packets[w] = Math.floor(i / 5); });
         packetCount = Math.ceil(sorted.length / 5);
         list = sorted.concat(list.filter((w) => sorted.indexOf(w) < 0));
-      } else {
-        // phase 2 : quelques mots des semaines passées à la fin de la séance
-        list = list.concat(archDue);
-        options = Object.assign({}, options, { maxAttempts: options.maxAttempts + archDue.length });
       }
     }
     G = {
@@ -139,6 +138,11 @@
       blanche: [],
       total: list.length
     };
+    openGame();
+  }
+
+  function openGame() {
+    const mode = G.mode;
     showScreen('jeu');
     $('#nom-mode').textContent = MODES[mode];
     show($('#btn-indice'), mode !== 'blanche');
@@ -173,8 +177,8 @@
     G.answered = false;
     G.unsure = false;
     const n = G.session.attempts;
-    $('#compteur-mot').textContent = (G.archived.has(w) ? 'Grande révision · ' : G.discovery ? 'Découverte · ' : '') + 'Mot ' + n +
-      (G.mode === 'blanche' || G.discovery ? ' / ' + G.total : '');
+    $('#compteur-mot').textContent = (G.mode === 'mine' ? '⛏️ Profondeur ' + S.mine.depth + ' · ' : G.discovery ? 'Découverte · ' : '') + 'Mot ' + n +
+      (G.mode === 'blanche' || G.discovery || G.mode === 'mine' ? ' / ' + G.total : '');
     resetZones();
     // mot jamais vu : fiche d'étude (découpage, piège, lieu), puis on cache
     if (G.mode !== 'blanche' && isNew(w) && !G.studied) return showStudyCard();
@@ -184,7 +188,7 @@
     if (mode === 'regarder' && !studied) return lookCoverWrite();
     if (mode === 'choix') renderChoices();
     else if (mode === 'lettres') renderTiles(w, false);
-    else openInput();
+    else openInput(); // dictée-flash, dictée blanche, mine
     $('#consigne').textContent = mode === 'choix' ? 'Écoute et choisis la bonne orthographe.' :
       mode === 'lettres' ? 'Écoute et remets les lettres dans l\'ordre.' : 'Écoute le mot et écris-le.';
     speakWord();
@@ -546,20 +550,16 @@
     const res = Align.grade(answer, G.word);
     let st;
     if (G.archived.has(G.word)) {
-      // phase 2 : grande révision d'un mot d'une semaine passée. En mode
-      // reconnaissance (Le bon mot, Lettres), une réussite ne fait pas avancer
-      // le mot : il faut l'écrire de mémoire.
-      const recognition = Leitner.RECOGNITION_MODES.indexOf(G.mode) >= 0;
-      const neutral = res.correct && (recognition || G.usedHint || G.unsure);
-      const r = neutral ? { entry: S.archive[G.word], retired: false }
-        : Leitner.applyArchiveResult(S.archive[G.word], res.correct, today());
+      // phase 2 : chaque mot a sa propre mémoire (voir leitner.js)
+      const r = Leitner.applyArchiveResult(S.archive[G.word],
+        { correct: res.correct, unsure: G.unsure || G.usedHint }, today());
       if (r.retired) {
         delete S.archive[G.word];
         S.retired.push({ w: G.word, week: r.entry.week || '', date: today() });
         G.retired.push(G.word);
-        G.archived.delete(G.word);
       } else S.archive[G.word] = r.entry;
-      st = { change: r.retired ? 'up' : 'same', box: r.retired ? 3 : 2, archive: true, retired: r.retired };
+      st = { archive: true, retired: r.retired };
+      if (res.correct) dig(r.retired ? 3 : 1);
     } else {
       st = Leitner.applyResult(S.progress[G.word], {
         correct: res.correct, usedHint: G.usedHint, unsure: G.unsure, answer: res.answer, mode: G.mode,
@@ -586,7 +586,9 @@
 
     show($('#correction'), true);
     drawAlignment(res, false);
-    if (res.correct) {
+    if (res.correct && G.mode === 'mine') {
+      mineSuccess(st);
+    } else if (res.correct) {
       const mat = rewardFor(st);
       G.loot.push(mat);
       Store.addBlocks([mat]);
@@ -619,9 +621,91 @@
     }
   }
 
+  /* ---------------- Phase 2 : la mine des souvenirs ---------------- */
+
+  /** La mine est-elle ouverte (mots à revoir et expéditions restantes aujourd'hui) ? */
+  function mineOpen() {
+    const m = S.mine;
+    const done = m.lastDay === today() ? m.today : 0;
+    return done < MINE_PER_DAY && Leitner.dueArchive(S.archive, today(), 1).length > 0;
+  }
+
+  function startMine() {
+    if (!mineOpen()) return renderMine();
+    Sound.unlock();
+    const due = Leitner.dueArchive(S.archive, today(), MINE_SIZE);
+    G = {
+      mode: 'mine', discovery: false, packets: {}, packetCount: 0, currentPacket: -1,
+      archived: new Set(due), retired: [], found: [], dug: 0,
+      session: new Leitner.Session(shuffle(due), { maxAttempts: due.length * 2, maxMs: Infinity, maxRetries: 1, gap: 2 }),
+      loot: [], blanche: [], total: due.length
+    };
+    openGame();
+  }
+
+  /** Creuse : chaque mot réussi fait descendre le mineur d'un bloc (3 pour un mot su pour toujours). */
+  function dig(n) {
+    for (let i = 0; i < n; i++) {
+      S.mine.depth++;
+      G.dug++;
+      const t = Pixel.treasureAt(S.mine.depth);
+      if (t) { S.mine.found.push({ id: t.id, depth: t.depth, date: today() }); G.found.push(t); }
+    }
+  }
+
+  function mineSuccess(st) {
+    const layer = ['terre', 'pierre', 'ardoise', 'cristal', 'magma'][[10, 30, 60, 100, Infinity].findIndex((d) => S.mine.depth < d)];
+    const t = G.found[G.found.length - 1];
+    const fresh = t && t.depth > S.mine.depth - (st.retired ? 3 : 1);
+    $('#message').textContent = (st.retired ? '🏆 Ce mot est su pour toujours ! ' : pick(BRAVO) + ' ') +
+      'Tu creuses : profondeur ' + S.mine.depth + '.' + (fresh ? ' Trésor trouvé : ' + t.nom + ' !' : '') +
+      (G.unsure || G.usedHint ? ' Tu hésitais : ce mot reviendra bientôt.' : '');
+    $('#message').className = 'message bravo';
+    $('#butin-nombre').textContent = String(S.mine.depth);
+    show($('#btn-continuer'), true);
+    show($('#btn-reecrire'), false);
+    $('#consigne').textContent = '';
+    sceneGame.block = layer;
+    sceneGame.celebrate(layer, (n) => (n < 3 ? Sound.hit() : Sound.crack())).then(() => (fresh ? Sound.fanfare() : Sound.success()));
+  }
+
+  function renderMine() {
+    showScreen('mine');
+    const scroll = $('#mine-vue');
+    const w = Math.min(520, scroll.clientWidth || 360);
+    const portrait = innerHeight > innerWidth;
+    Pixel.drawMine($('#mine'), S.mine.depth, w, Math.round(portrait ? Math.min(360, innerHeight * 0.3) : Math.max(220, Math.min(460, innerHeight - 140))));
+    const nArch = Object.keys(S.archive).length;
+    const due = Leitner.dueArchive(S.archive, today(), 999).length;
+    const next = Pixel.nextTreasure(S.mine.depth);
+    $('#mine-texte').textContent = 'Profondeur : ' + S.mine.depth + ' blocs, dans ' + Pixel.layerName(S.mine.depth) + '. ' +
+      (next ? 'Prochain trésor dans ' + (next.depth - S.mine.depth) + ' blocs.' : '');
+    const btn = $('#btn-expedition');
+    const open = mineOpen();
+    btn.disabled = !open;
+    const doneToday = S.mine.lastDay === today() ? S.mine.today : 0;
+    btn.textContent = open
+      ? (doneToday ? '⛏️ Expédition bonus (' : '⛏️ Partir en expédition (') + Math.min(MINE_SIZE, due) + (Math.min(MINE_SIZE, due) > 1 ? ' mots)' : ' mot)')
+      : nArch ? 'La mine est fermée : reviens demain !' : 'Pas encore de mots dans la mine';
+    $('#mine-mots').textContent = nArch + ' mots cachés dans la mine' + (S.retired.length ? ' · ' + S.retired.length + ' sus pour toujours' : '');
+    const tre = $('#tresors');
+    tre.innerHTML = '';
+    S.mine.found.forEach((f) => {
+      const t = Pixel.TREASURES.find((x) => x.id === f.id) || { nom: 'une géode géante' };
+      const img = el('img', 'tresor'); img.src = Pixel.treasureIcon(f.id, 40);
+      img.alt = img.title = t.nom + ' (profondeur ' + f.depth + ')';
+      tre.appendChild(img);
+    });
+    if (!S.mine.found.length) tre.appendChild(el('p', 'aide', 'Creuse pour trouver tes premiers trésors !'));
+    const tro = $('#trophees');
+    tro.innerHTML = '';
+    S.retired.slice(-12).reverse().forEach((r) => tro.appendChild(el('span', 'plaque mot', r.w)));
+    if (S.retired.length > 12) tro.appendChild(el('span', 'plaque', '+ ' + (S.retired.length - 12)));
+    if (!S.retired.length) tro.appendChild(el('p', 'aide', 'Les mots sus pour toujours viendront ici, gravés en or.'));
+  }
+
   /** Bloc gagné : rare si le mot passe en boîte 3, peu commun s'il passe en boîte 2. */
   function rewardFor(st) {
-    if (st.archive) return Pixel.randomMaterial(st.retired ? 3 : 2);
     if (st.change === 'up' && st.box === 3) return Pixel.randomMaterial(3);
     if (st.change === 'up' && st.box === 2) return Pixel.randomMaterial(2);
     return Pixel.randomMaterial(1);
@@ -640,6 +724,7 @@
     const box = $('#alignement');
     box.innerHTML = '';
     const grid = el('div', 'grille-alignement' + (compact ? ' compact' : ''));
+    grid.style.setProperty('--n', res.ops.length);
     res.ops.forEach((o) => {
       const col = el('div', 'colonne ' + o.op);
       col.appendChild(el('span', 'lettre-enfant mot', o.got || (o.op === 'missing' ? '·' : '')));
@@ -707,7 +792,23 @@
     const g = G;
     const details = $('#fin-details');
     details.innerHTML = '';
-    if (g.mode === 'blanche') {
+    show($('#fin-monde'), g.mode !== 'mine');
+    show($('#fin-mine'), g.mode === 'mine');
+    $('#fin-revenir').textContent = 'Reviens demain pour gagner encore des blocs !';
+    if (g.mode === 'mine') {
+      S.mine.today = S.mine.lastDay === today() ? S.mine.today + 1 : 1;
+      S.mine.lastDay = today();
+      $('#fin-texte').textContent = g.dug
+        ? 'Expédition terminée : tu as creusé ' + g.dug + (g.dug > 1 ? ' blocs' : ' bloc') + ' ! Profondeur : ' + S.mine.depth + '.'
+        : 'Expédition terminée. Ces mots reviendront bientôt pour que tu les retiennes.';
+      g.found.forEach((t) => {
+        const it = el('div', 'objet bloc-butin');
+        const img = el('img'); img.src = Pixel.treasureIcon(t.id, 40); img.alt = '';
+        it.appendChild(img); it.appendChild(el('span', '', 'Trésor : ' + t.nom));
+        details.appendChild(it);
+      });
+      $('#fin-revenir').textContent = 'Reviens demain pour une nouvelle expédition !';
+    } else if (g.mode === 'blanche') {
       const score = g.blanche.filter((r) => r.correct).length;
       S.blanche.push({ date: today(), score, total: g.blanche.length });
       Store.addBlocks(g.loot);
@@ -831,23 +932,27 @@
     renderArchive();
   }
 
-  /** Tableau de la phase 2 (grande révision). */
+  /** Tableau de la phase 2 (la mine des souvenirs). */
   function renderArchive() {
     const t = $('#grande-revision');
     t.innerHTML = '';
     const words = Object.keys(S.archive).sort((a, b) => S.archive[a].nextDue.localeCompare(S.archive[b].nextDue));
-    $('#grande-revision-info').textContent = (words.length ? words.length + ' mots en grande révision.' : 'Aucun mot en grande révision pour l\'instant.') +
+    $('#grande-revision-info').textContent = (words.length ? words.length + ' mots dans la mine, ' +
+      Leitner.dueArchive(S.archive, today(), 999).length + ' à revoir aujourd\'hui. Profondeur atteinte : ' + S.mine.depth + '.' :
+      'Aucun mot dans la mine pour l\'instant.') +
       (S.retired.length ? ' Sus pour toujours : ' + S.retired.length + ' (' + S.retired.slice(-10).map((r) => r.w).join(', ') + (S.retired.length > 10 ? '…' : '') + ').' : '');
     if (!words.length) return;
     const head = el('tr');
-    ['Mot', 'Semaine', 'Étape', 'Prochaine révision', 'Erreurs'].forEach((h) => head.appendChild(el('th', '', h)));
+    ['Mot', 'Semaine', 'Intervalle', 'Facilité', 'Réussites d\'affilée', 'Prochaine révision', 'Erreurs'].forEach((h) => head.appendChild(el('th', '', h)));
     t.appendChild(head);
     words.forEach((w) => {
-      const a = S.archive[w];
+      const a = Leitner.migrateEntry(S.archive[w]);
       const tr = el('tr');
       tr.appendChild(el('td', 'mot', w));
       tr.appendChild(el('td', '', a.week || '—'));
-      tr.appendChild(el('td', '', (a.level + 1) + ' / ' + Leitner.ARCHIVE_INTERVALS.length));
+      tr.appendChild(el('td', '', a.interval + ' j'));
+      tr.appendChild(el('td', '', a.ease >= 2.4 ? 'facile' : a.ease >= 1.9 ? 'moyen' : 'difficile'));
+      tr.appendChild(el('td', '', a.streak + ' / ' + Leitner.RETIRE_STREAK));
       tr.appendChild(el('td', '', a.nextDue <= today() ? 'aujourd\'hui' : formatDate(a.nextDue)));
       tr.appendChild(el('td', '', String(a.fail)));
       t.appendChild(tr);
@@ -932,6 +1037,8 @@
       else openKeyboard();
     },
     carte: renderMap,
+    mine: renderMine,
+    expedition: startMine,
     continuer() { clearTimeout(G.timer); nextWord(); },
     reecrire: startRewrite,
     'enregistrer-liste'() {

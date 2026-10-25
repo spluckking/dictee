@@ -50,10 +50,14 @@
         <button class="btn btn-amethyste" data-action="jouer" data-mode="choix">✅<br>Le bon mot</button>
       </div>
 
-      <div class="ligne-boutons">
+      <div class="ligne-boutons accueil-bas">
         <button class="btn btn-or" data-action="jouer" data-mode="blanche" id="btn-blanche">📝 Dictée blanche</button>
         <button class="btn btn-brique" data-action="monde">🏠 Mon monde</button>
         <button class="btn btn-saphir" data-action="carte">🗺️ Ma carte des pièges</button>
+        <button class="btn btn-ardoise btn-mine" id="btn-mine" data-action="mine" hidden>
+          <span>⛏️ La mine des souvenirs</span>
+          <span id="btn-mine-info" class="mine-info"></span>
+        </button>
       </div>
     </section>
 
@@ -148,10 +152,31 @@
         <p id="fin-texte" class="grand"></p>
         <div id="fin-butin" class="inventaire"></div>
         <div id="fin-details"></div>
-        <p class="grand">Reviens demain pour gagner encore des blocs !</p>
+        <p id="fin-revenir" class="grand">Reviens demain pour gagner encore des blocs !</p>
         <div class="ligne-boutons">
-          <button class="btn btn-brique" data-action="monde">🏠 Mon monde</button>
+          <button class="btn btn-brique" id="fin-monde" data-action="monde">🏠 Mon monde</button>
+          <button class="btn btn-ardoise" id="fin-mine" data-action="mine" hidden>⛏️ Voir la mine</button>
           <button class="btn btn-herbe" data-action="accueil">Accueil</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PHASE 2 : LA MINE DES SOUVENIRS ===================== -->
+    <section id="ecran-mine" class="ecran" hidden>
+      <header class="barre">
+        <button class="btn btn-petit" data-action="accueil">⬅ Accueil</button>
+        <h2 class="titre-pixel">La mine des souvenirs</h2>
+      </header>
+      <div class="panneau mine-panneau">
+        <div id="mine-vue" class="mine-vue"><canvas id="mine" aria-label="Le puits de la mine"></canvas></div>
+        <div class="mine-infos">
+          <p id="mine-texte" class="grand"></p>
+          <p id="mine-mots" class="aide"></p>
+          <button class="btn btn-herbe btn-geant" id="btn-expedition" data-action="expedition"></button>
+          <h3 class="petit-titre">Mes trésors</h3>
+          <div id="tresors" class="inventaire"></div>
+          <h3 class="petit-titre">Salle des trophées</h3>
+          <div id="trophees" class="trophees"></div>
         </div>
       </div>
     </section>
@@ -225,8 +250,8 @@
         <div class="tableau-scroll"><table id="progression"></table></div>
         <div id="scores-blanche" class="aide"></div>
 
-        <h3>Grande révision (anciennes semaines)</h3>
-        <p class="aide">Les mots des semaines passées reviennent après 2, 7, 14 puis 30 jours (5 au plus par séance). Après 4 réussites d'affilée, ils sont retirés : sus pour toujours. Une erreur les fait recommencer au début.</p>
+        <h3>La mine des souvenirs (phase 2 : anciennes semaines)</h3>
+        <p class="aide">Tous les mots des semaines passées sont mélangés et chacun a sa propre mémoire : réussi en étant sûr, il revient de plus en plus tard (3 j, 7 j, 16 j, 40 j…) ; réussi en hésitant, il revient un peu plus tard seulement ; raté, il revient dès le lendemain et deviendra plus fréquent. Après 4 réussites d'affilée avec un écart d'au moins 45 jours, il est retiré : su pour toujours. Une seule expédition de 10 mots au plus par jour (une 2e s'il reste des mots en retard), en dictée-flash, et chaque mot réussi fait creuser la mine (trésors à trouver).</p>
         <p id="grande-revision-info" class="aide"></p>
         <div class="tableau-scroll"><table id="grande-revision"></table></div>
 
@@ -241,7 +266,7 @@
 
         <h3>Nouvelle semaine</h3>
         <p class="aide">Colle d'abord la nouvelle liste dans le cadre ci-dessus, puis :</p>
-        <label class="option"><input type="checkbox" id="garder-rates" checked> Mettre les mots de cette semaine en grande révision (<span id="liste-rates"></span>)</label>
+        <label class="option"><input type="checkbox" id="garder-rates" checked> Envoyer les mots de cette semaine dans la mine des souvenirs (<span id="liste-rates"></span>)</label>
         <div class="ligne-boutons">
           <button class="btn btn-brique" data-action="nouvelle-semaine">Commencer une nouvelle semaine</button>
         </div>

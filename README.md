@@ -38,7 +38,7 @@ Sur le principe d'une méthode « multi malin » pour l'orthographe : chaque dif
 
 | Méthode | Dans l'appli |
 |---|---|
-| Répétition espacée | Boîtes de Leitner pendant la semaine, puis grande révision (phase 2) |
+| Répétition espacée | Boîtes de Leitner pendant la semaine, puis mémoire propre à chaque mot dans la mine des souvenirs (phase 2) |
 | Rappel actif | Le mot est toujours écrit de mémoire, jamais recopié |
 | Auto-évaluation | Après chaque réponse : « 😎 Sûr de moi » ou « 🤔 J'hésite ». Un mot juste mais hésitant ne monte pas de boîte ; un mot faux alors que l'enfant était sûr est signalé |
 | Palais mental (lieux) | Chaque type de piège est un lieu du monde : l'île des -tion, le château des lettres muettes, la tour des lettres doubles, le pont du m, le puits du h muet, la grotte des accents, la forêt des sons cachés, la prairie des mots tranquilles. Chaque mot « habite » dans le lieu de son piège principal, rappelé dans l'indice et la correction |
@@ -49,9 +49,16 @@ Sur le principe d'une méthode « multi malin » pour l'orthographe : chaque dif
 
 **Une seule montée de boîte par jour et par mot** : c'est l'espacement entre les jours qui fait retenir.
 
-### Phase 2 : grande révision
+### Phase 2 : la mine des souvenirs
 
-À chaque nouvelle semaine, les mots de la semaine qui se termine passent en grande révision. Ils reviennent après 2, 7, 14 puis 30 jours (un mot déjà su commence à 7 jours), 5 au plus par séance, à la fin des séances de révision. Une réussite écrite de mémoire, sans indice ni hésitation, le fait avancer ; une erreur le fait recommencer (revu le lendemain). Après 4 réussites d'affilée (environ 2 mois), le mot est retiré : il est « su pour toujours » et rapporte un minerai rare. En mode Le bon mot ou Lettres mélangées, une réussite ne fait pas avancer le mot.
+À chaque nouvelle semaine, les mots de la semaine qui se termine descendent dans « la mine des souvenirs », un espace à part, ouvert depuis l'accueil. Tous les mots des semaines passées y sont mélangés et **chacun a sa propre mémoire** (intervalle et facilité, à la manière de SuperMemo/Anki, simplifié) :
+
+- réussi en étant sûr de soi : il revient de plus en plus tard (environ 3 j, 7 j, 16 j, 40 j…) et devient « facile » ;
+- réussi en hésitant ou avec l'indice : il revient un peu plus tard seulement et devient un peu plus « difficile » ;
+- raté : il revient dès le lendemain et sa facilité baisse, donc il reviendra plus souvent ensuite ;
+- après 4 réussites d'affilée et un écart d'au moins 45 jours (au moins 5 semaines au total), il est retiré : « su pour toujours », gravé dans la salle des trophées.
+
+Les actions sont volontairement limitées : une seule activité (dictée-flash avec « Sûr de moi / J'hésite »), une expédition de 10 mots au plus par jour, les mots les plus en retard d'abord, plus une expédition bonus s'il reste des mots en retard. Ensuite la mine est fermée jusqu'au lendemain. Récompense propre à la phase 2 : chaque mot réussi fait creuser d'un bloc (3 pour un mot su pour toujours) ; en descendant, on traverse la terre, la pierre, l'ardoise, la grotte de cristal puis le cœur de magma, et on trouve des trésors (lanterne, fossile, coffre, géode, wagonnet, statue d'or, couronne…).
 
 **Mode du jour** (dictée le vendredi) : Le bon mot jusqu'au lundi, Lettres mélangées le mardi, Regarder-cacher-écrire le mercredi, Dictée blanche le jeudi, Dictée-flash le jour même. L'enfant peut toujours choisir un autre mode.
 
@@ -142,7 +149,7 @@ Le clavier peut mal reconnaître une lettre : après chaque saisie, l'appli affi
 
 ## Liste publiée (`liste.txt`)
 
-La liste de la semaine peut aussi être publiée avec l'appli : c'est le fichier `liste.txt` à la racine du dépôt (même format que dans l'espace parent, première ligne facultative `# Titre`). À chaque ouverture, si la tablette est en ligne et que `liste.txt` a changé, l'appli démarre automatiquement une nouvelle semaine avec cette liste. Les mots de la liste publiée précédente passent en grande révision. Le monde de l'enfant est conservé.
+La liste de la semaine peut aussi être publiée avec l'appli : c'est le fichier `liste.txt` à la racine du dépôt (même format que dans l'espace parent, première ligne facultative `# Titre`). À chaque ouverture, si la tablette est en ligne et que `liste.txt` a changé, l'appli démarre automatiquement une nouvelle semaine avec cette liste. Les mots de la liste publiée précédente descendent dans la mine des souvenirs. Le monde de l'enfant est conservé.
 
 ## Espace parent
 
@@ -156,8 +163,8 @@ Bouton ⚙️ en haut de l'accueil, puis répondre à la multiplication.
   La phrase est lue après le mot, comme en dictée.
 - **Jour de la dictée** : vendredi par défaut.
 - **Progression** : boîte de chaque mot, réussites (dont avec indice), erreurs, erreurs fréquentes, prochaine révision, scores des dictées blanches.
-- **Nouvelle semaine** : coller la nouvelle liste, puis « Commencer une nouvelle semaine ». Les mots de la semaine passent en grande révision (case cochée par défaut). Le monde de l'enfant est conservé.
-- **Grande révision** : tableau des mots des semaines passées (étape, prochaine révision, erreurs) et liste des mots sus pour toujours.
+- **Nouvelle semaine** : coller la nouvelle liste, puis « Commencer une nouvelle semaine ». Les mots de la semaine descendent dans la mine des souvenirs (case cochée par défaut). Le monde de l'enfant est conservé.
+- **La mine des souvenirs** : tableau des mots des semaines passées (intervalle, facilité, réussites d'affilée, prochaine révision, erreurs) et liste des mots sus pour toujours.
 - **Réglages** : ouverture automatique du clavier, écriture cursive (police Playwrite FR Moderne), sons, saisie par défaut (clavier ou tuiles), test de la voix.
 
 Si aucune voix française n'est trouvée : **Paramètres Android → Système → Langues → Synthèse vocale** → moteur Google → installer les données vocales **Français (France)**.
