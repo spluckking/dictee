@@ -193,7 +193,7 @@
     const g = this.g;
     g.clearRect(0, 0, w, h);
     g.imageSmoothingEnabled = false;
-    const s = Math.max(2, Math.floor(h / 20));
+    const s = Math.max(2, Math.min(Math.floor(h / 20), Math.floor(w / 30)));
     const mx = Math.floor(w / 2 - 14 * s), my = h - 16 * s - s;
     const bs = 8 * s;
     const bx = mx + 15 * s, by = h - bs - s;
@@ -241,7 +241,7 @@
     let done = 0;
     let particles = null;
     const { w, h } = this.size();
-    const s = Math.max(2, Math.floor(h / 20));
+    const s = Math.max(2, Math.min(Math.floor(h / 20), Math.floor(w / 30)));
     const blockCol = MATERIALS[this.block].base;
     return new Promise((resolve) => {
       const loop = (now) => {

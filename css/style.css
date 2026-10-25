@@ -132,7 +132,8 @@ h3 { font-family: var(--police-titre); font-weight: normal; font-size: 14px; mar
 .butin { display: flex; align-items: center; gap: 4px; background: var(--papier); border: 4px solid var(--encre); padding: 4px 8px; font-weight: 700; }
 .butin img { width: 28px; height: 28px; image-rendering: pixelated; }
 
-.scene-jeu { width: 100%; height: 110px; }
+.cote { display: flex; flex-direction: column; gap: 10px; }
+.scene-jeu { width: 100%; height: clamp(56px, 9vh, 110px); }
 body.clavier-ouvert .scene-jeu { display: none; }
 
 .zone-jeu { display: flex; flex-direction: column; gap: 14px; }
@@ -175,28 +176,30 @@ body.cursive .champ { font-weight: 400; font-size: clamp(2rem, 7vw, 3.6rem); }
 .confirmation { text-align: center; display: flex; flex-direction: column; gap: 12px; }
 .confirmation p { margin: 0; font-size: 1.2rem; font-weight: 700; }
 
-/* Tuiles */
-.tuiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; min-height: 84px; padding: 10px; }
+/* Tuiles : toujours sur une seule ligne, taille calculée en JS (--tuile) */
+.tuiles { display: flex; flex-wrap: nowrap; justify-content: center; gap: 6px; min-height: calc(var(--tuile, 64px) * 1.12 + 20px); padding: 8px; }
 .tuiles.reponse { background: #fff; border: 4px dashed #9a8a6a; align-items: center; }
 .tuiles .vide { color: #9a8a6a; font-size: 1rem; }
 .tuile {
-  font-size: 2.2rem;
+  flex: none;
+  font-size: calc(var(--tuile, 64px) * 0.55);
   font-weight: 700;
-  width: 64px; height: 72px;
+  width: var(--tuile, 64px); height: calc(var(--tuile, 64px) * 1.12);
   color: var(--encre);
   background: linear-gradient(#f0d9a0, #e0c17a);
-  border: 4px solid var(--encre);
-  box-shadow: inset -4px -4px 0 rgba(0, 0, 0, 0.18), inset 4px 4px 0 rgba(255, 255, 255, 0.5), 0 4px 0 var(--encre);
+  border: 3px solid var(--encre);
+  box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.18), inset 3px 3px 0 rgba(255, 255, 255, 0.5), 0 3px 0 var(--encre);
   border-radius: 0;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   padding: 0;
 }
+.tuile-vide { display: inline-block; background: rgba(0, 0, 0, 0.04); border: 3px dashed #c9b994; box-shadow: none; }
 .reponse .tuile { background: linear-gradient(#c9f0b8, #a8e090); }
 .tuile.soulevee { opacity: 0.35; }
 .tuile.fantome { position: fixed; z-index: 50; pointer-events: none; transform: scale(1.15); }
-body.cursive .tuile { font-weight: 400; font-size: 1.7rem; }
+body.cursive .tuile { font-weight: 400; font-size: calc(var(--tuile, 64px) * 0.42); }
 
 /* Le bon mot */
 .choix { display: grid; gap: 14px; }
@@ -239,7 +242,7 @@ body.cursive .choix-mot { font-weight: 400; font-size: clamp(1.6rem, 6vw, 2.6rem
 .fin { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .fin .scene-mineur { width: 220px; height: 150px; }
 .inventaire { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-.bloc-butin { width: 48px; height: 48px; image-rendering: pixelated; animation: pop 0.4s steps(4) both; }
+.bloc-butin { animation: pop 0.4s steps(4) both; }
 @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 .ligne-blanche { display: flex; gap: 10px; align-items: center; font-size: 1.4rem; margin: 4px 0; }
 
@@ -266,15 +269,64 @@ th { background: #e9dcc0; font-size: 0.9rem; }
 .boite-2 { background: #8d9196; }
 .boite-3 { background: #e0a800; }
 
-/* ---------- Paysage (tablette couchée) : deux colonnes pour le jeu ---------- */
-@media (orientation: landscape) and (min-width: 900px) {
-  #ecran-jeu { display: grid; grid-template-columns: 240px 1fr; grid-template-rows: auto 1fr; gap: 16px; }
+/* ---------- Tout doit tenir sans défiler ---------- */
+#alignement { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 20px; }
+#alignement .legende { order: 1; flex-basis: 100%; }
+.ligne-lieu { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; }
+.ligne-lieu .aide { margin: 0; }
+.resultats-blanche { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.resultats-blanche .puce { font-size: 1.05rem; }
+.fin .scene-mineur { height: clamp(70px, 11vh, 150px); width: auto; aspect-ratio: 3 / 2; }
+.fin { gap: 8px; }
+.fin .grand { margin: 2px 0; }
+.fin .ligne-boutons { width: 100%; }
+.fin .ligne-boutons .btn { flex: 1 1 140px; }
+
+/* Paysage (tablette couchée) : mineur et outils à gauche, exercice à droite */
+@media (orientation: landscape) and (min-width: 700px) {
+  #ecran-jeu { display: grid; grid-template-columns: minmax(190px, 24%) 1fr; grid-template-rows: auto 1fr; gap: 12px 16px; align-items: start; }
   #ecran-jeu[hidden] { display: none; }
   #ecran-jeu .barre { grid-column: 1 / -1; }
-  #ecran-jeu .scene-jeu { height: 220px; align-self: start; }
+  #ecran-jeu .scene-jeu { height: clamp(80px, 26vh, 220px); }
+  .outils { flex-direction: column; }
+  .outils .btn { flex: none; width: 100%; }
+  .piege-correction { border-top: none; border-left: 3px dashed #d8c8a8; padding: 0 0 0 16px; margin: 0; }
 }
-@media (max-height: 520px) {
-  .scene-jeu { height: 70px; }
+
+/* Écrans peu hauts : tout en plus compact */
+@media (max-height: 860px) {
+  #app { padding-top: 8px; padding-bottom: 12px; }
+  .ecran { gap: 10px; }
+  .panneau { padding: 12px; }
+  .zone-jeu { gap: 10px; }
+  .btn { min-height: 52px; padding: 8px 14px; font-size: 1.1rem; }
+  .btn-icone { min-height: 52px; width: 52px; font-size: 1.4rem; }
+  .btn-geant { min-height: 84px; padding: 10px; font-size: 1.4rem; }
+  .grille-modes .btn { min-height: 76px; }
+  .scene-mineur { height: 84px; width: 110px; }
+  .consigne { font-size: 1.15rem; }
+  .message { font-size: 1.25rem; }
+  .mot-montre, .reconnu { font-size: clamp(1.8rem, 9vh, 4rem); padding: 4px 10px; }
+  .champ { font-size: clamp(1.8rem, 8vh, 4rem); padding: 6px; }
+  .grand-mot { font-size: clamp(1.8rem, 9vh, 4rem); padding: 4px 10px; }
+  .lettre-juste { font-size: clamp(1.4rem, 6vh, 3rem); min-height: 0; }
+  .lettre-enfant { font-size: 1.1rem; min-height: 1.6rem; }
+  .choix-mot { min-height: 60px; font-size: clamp(1.6rem, 6vh, 3.2rem); }
+  .choix { gap: 10px; }
+  .indice { padding: 6px 10px; }
+  .syllabes { font-size: clamp(1.6rem, 6vh, 3.4rem); margin: 2px 0; }
+  .indice .phrase, .fiche .phrase { font-size: 1.15rem; }
+  .confirmation { gap: 8px; }
+  .fiche, .paquet { gap: 8px; }
+}
+@media (max-height: 620px) {
+  .scene-jeu, .accueil-info .scene-mineur, .fin .scene-mineur, #alignement .legende { display: none; }
+  .fiche .aide { display: none; }
+  .resultats-blanche .puce { font-size: 0.95rem; padding: 0 6px; }
+  .titre-pixel { font-size: 16px; }
+  .grille-modes .btn { min-height: 60px; font-size: 1rem; }
+  .btn-geant { min-height: 64px; }
+  #app .ecran > .barre .btn-icone { min-height: 44px; width: 44px; }
 }
 
 /* ---------- Pièges, lieux (palais mental), fiche, carte mentale ---------- */

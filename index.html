@@ -69,13 +69,16 @@
         <button class="btn btn-pierre btn-icone" data-action="son" aria-label="Couper ou remettre le son">🔊</button>
       </header>
 
-      <canvas id="mineur-jeu" class="scene-mineur scene-jeu" aria-hidden="true"></canvas>
-
-      <div class="panneau zone-jeu">
+      <!-- à côté (paysage) ou au-dessus (portrait) : le mineur et les outils -->
+      <div class="cote">
+        <canvas id="mineur-jeu" class="scene-mineur scene-jeu" aria-hidden="true"></canvas>
         <div class="ligne-boutons outils">
           <button class="btn btn-saphir btn-reecouter" data-action="reecouter">🔊 Réécouter</button>
           <button class="btn btn-or" data-action="indice" id="btn-indice">💡 Indice</button>
         </div>
+      </div>
+
+      <div class="panneau zone-jeu">
         <div id="indice" class="indice" hidden></div>
 
         <!-- consigne / mot affiché (regarder-cacher-écrire, correction) -->

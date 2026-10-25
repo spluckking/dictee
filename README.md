@@ -28,8 +28,9 @@ Application web progressive (PWA) pour aider un enfant de CE2 à apprendre sa li
    - aucune révision n'est planifiée après la veille de la dictée : tout est revu ce jour-là ;
    - les modes de reconnaissance (Le bon mot, Lettres mélangées) ne font pas dépasser la boîte 2.
 3. **Feedback immédiat et bienveillant** : la réponse est alignée sur le mot juste (Levenshtein), lettres justes en vert, lettres fausses, manquantes ou en trop en orange. Une erreur d'accent seule affiche « Presque ! Regarde l'accent ». Sinon : « On réessaie ! ». Pas de vie perdue, pas de chrono, pas de son négatif.
-4. **Première séance de la semaine** : tous les mots de la liste, en une fois, quel que soit leur nombre. **Ensuite, séances courtes** de révision espacée : 15 mots ou 10 minutes, puis un écran de félicitations. Un mot ajouté en cours de semaine relance une séance complète.
-5. **Double codage** : le bouton « Indice » montre la phrase (mot masqué) et les syllabes pendant 3 secondes, et les lit. Un mot réussi avec indice ne monte pas de boîte.
+4. **Déterminant facultatif** : « jungle » est accepté pour « la jungle » (un mauvais déterminant, « le jungle », reste une erreur). Les tuiles portent sur le mot sans son déterminant, toutes sur une ligne, et restent à leur place quand on en prend une.
+5. **Première séance de la semaine** : tous les mots de la liste, en une fois, quel que soit leur nombre. **Ensuite, séances courtes** de révision espacée : 15 mots ou 10 minutes, puis un écran de félicitations. Un mot ajouté en cours de semaine relance une séance complète.
+6. **Double codage** : le bouton « Indice » montre la phrase (mot masqué) et les syllabes pendant 3 secondes, et les lit. Un mot réussi avec indice ne monte pas de boîte.
 
 ### Méthodes de mémorisation mélangées
 

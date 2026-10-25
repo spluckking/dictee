@@ -76,3 +76,22 @@ test('reconstruction : la ligne « mot juste » redonne toujours le mot', () => 
     assert.equal(r.map((o) => o.got).join(''), g);
   }
 });
+
+test('déterminant facultatif : « jungle » accepté pour « la jungle »', () => {
+  assert.equal(A.grade('jungle', 'la jungle').correct, true);
+  assert.equal(A.grade('la jungle', 'la jungle').correct, true);
+  assert.equal(A.grade('attention', "l'attention").correct, true);
+  assert.equal(A.grade("l’attention", "l'attention").correct, true);
+  assert.equal(A.grade('éléphant', 'un éléphant').correct, true);
+  // l'alignement se fait alors sur le mot seul
+  const r = A.grade('elephant', 'un éléphant');
+  assert.equal(r.accentOnly, true);
+  assert.equal(r.target, 'éléphant');
+  // un mauvais déterminant reste une erreur
+  assert.equal(A.grade('le jungle', 'la jungle').correct, false);
+  // mot sans déterminant : inchangé
+  assert.equal(A.grade('entre', 'entre').correct, true);
+  assert.deepEqual(A.splitDeterminer('une femme'), { det: 'une', core: 'femme' });
+  assert.deepEqual(A.splitDeterminer("l'attention"), { det: "l'", core: 'attention' });
+  assert.deepEqual(A.splitDeterminer('lointain'), { det: '', core: 'lointain' });
+});

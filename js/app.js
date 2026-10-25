@@ -340,14 +340,15 @@
     }
     // palais mental : le lieu où habite le mot rappelle son piège
     const place = Traps.detect(G.word).place;
-    box.appendChild(placeBadge(place));
-    box.appendChild(el('p', 'aide', Traps.PLACES[place].regle));
+    const lieu = el('div', 'ligne-lieu');
+    lieu.appendChild(placeBadge(place));
+    lieu.appendChild(el('span', 'aide', Traps.PLACES[place].regle));
+    box.appendChild(lieu);
     if (G.mode !== 'choix') {
       // syllabes et pièges montrés 3 secondes puis cachés (on ne recopie pas en regardant)
       const syl = Syllables.split(G.word);
       const p = chunkedWord(G.word, 'syllabes');
       box.appendChild(p);
-      box.appendChild(el('p', 'aide', syl.length + (syl.length > 1 ? ' syllabes' : ' syllabe')));
       setTimeout(() => { p.classList.add('cache'); }, 3000);
       Speech.say(syl.length > 1 ? syl : [G.word], 0.7);
     } else if (G.sentence) {
@@ -373,17 +374,21 @@
   /**
    * withExtras = true : lettres du mot + quelques lettres pièges (saisie sans
    * clavier en dictée). false : exactement les lettres du mot (lettres mélangées).
+   * Les tuiles portent sur le mot sans son déterminant (« jungle »), toutes
+   * sur une seule ligne. Une tuile prise laisse sa place vide : les autres
+   * ne bougent pas.
    */
   function renderTiles(word, withExtras) {
     show($('#saisie-clavier'), false);
     show($('#saisie-tuiles'), true);
     show($('#btn-vers-clavier'), G.mode !== 'lettres' || G.phase === 'reecriture');
-    let letters = Array.from(word);
-    if (withExtras) letters = letters.concat(extraLetters(word));
+    const core = Align.splitDeterminer(word).core;
+    let letters = Array.from(core);
+    if (withExtras) letters = letters.concat(extraLetters(core));
     let pool = shuffle(letters);
     // évite de donner le mot déjà dans l'ordre
-    if (pool.join('') === word && word.length > 1) pool = pool.slice(1).concat(pool[0]);
-    G.tiles = { pool: pool.map((c, i) => ({ c, id: i })), answer: [] };
+    if (pool.join('') === core && core.length > 1) pool = pool.slice(1).concat(pool[0]);
+    G.tiles = { slots: pool.map((c, i) => ({ c, id: i, used: false })), answer: [] };
     drawTiles();
   }
 
@@ -402,34 +407,45 @@
     return extras.slice(0, 4);
   }
 
+  /** Taille des tuiles pour que tout tienne sur une ligne. */
+  function sizeTiles() {
+    const n = G.tiles.slots.length;
+    const zone = $('#saisie-tuiles');
+    const avail = zone.clientWidth - 24;
+    const gap = 6;
+    const size = Math.max(28, Math.min(64, Math.floor((avail - gap * (n - 1)) / n)));
+    zone.style.setProperty('--tuile', size + 'px');
+  }
+
   function drawTiles() {
     const res = $('#reponse-tuiles'), pool = $('#reserve-tuiles');
     res.innerHTML = ''; pool.innerHTML = '';
-    G.tiles.answer.forEach((t, k) => {
-      const b = el('button', 'tuile mot', t.c === ' ' ? '␣' : t.c);
+    sizeTiles();
+    G.tiles.answer.forEach((slot, k) => {
+      const b = el('button', 'tuile mot', slot.c === ' ' ? '␣' : slot.c);
       b.type = 'button';
-      b.setAttribute('aria-label', 'Retirer la lettre ' + t.c);
-      b.addEventListener('click', () => { Sound.tap(); G.tiles.answer.splice(k, 1); G.tiles.pool.push(t); drawTiles(); });
+      b.setAttribute('aria-label', 'Retirer la lettre ' + slot.c);
+      b.addEventListener('click', () => { Sound.tap(); G.tiles.answer.splice(k, 1); slot.used = false; drawTiles(); });
       res.appendChild(b);
     });
     if (!G.tiles.answer.length) res.appendChild(el('span', 'vide', 'Touche ou glisse les lettres ici'));
-    G.tiles.pool.forEach((t) => {
-      const b = el('button', 'tuile mot', t.c === ' ' ? '␣' : t.c);
+    G.tiles.slots.forEach((slot) => {
+      if (slot.used) { pool.appendChild(el('span', 'tuile tuile-vide')); return; }
+      const b = el('button', 'tuile mot', slot.c === ' ' ? '␣' : slot.c);
       b.type = 'button';
-      b.setAttribute('aria-label', t.c === ' ' ? 'Espace' : 'Lettre ' + t.c);
-      enableDrag(b, t);
+      b.setAttribute('aria-label', slot.c === ' ' ? 'Espace' : 'Lettre ' + slot.c);
+      enableDrag(b, slot);
       pool.appendChild(b);
     });
     // lettres mélangées : on valide automatiquement quand tout est placé
-    if (G.mode === 'lettres' && G.phase === 'saisie' && !G.tiles.pool.length) setTimeout(submitTiles, 250);
+    if (G.mode === 'lettres' && G.phase === 'saisie' && G.tiles.slots.every((x) => x.used)) setTimeout(submitTiles, 250);
   }
 
-  function takeTile(t) {
-    const i = G.tiles.pool.indexOf(t);
-    if (i < 0) return;
+  function takeTile(slot) {
+    if (slot.used) return;
     Sound.tap();
-    G.tiles.pool.splice(i, 1);
-    G.tiles.answer.push(t);
+    slot.used = true;
+    G.tiles.answer.push(slot);
     drawTiles();
   }
 
@@ -558,6 +574,7 @@
     show($('#saisie-tuiles'), false);
     show($('#saisie-clavier'), false);
     show($('#indice'), false);
+    show($('#choix'), false); // l'alignement montre déjà le choix et le mot juste
 
     if (G.mode === 'blanche') {
       G.blanche.push(res);
@@ -594,7 +611,7 @@
       const piege = el('div', 'piege-correction');
       piege.appendChild(chunkedWord(G.word));
       piege.appendChild(placeBadge(d.place));
-      piege.appendChild(el('p', 'aide', Traps.PLACES[d.place].regle));
+      piege.appendChild(el('span', 'aide', Traps.PLACES[d.place].regle));
       $('#alignement').appendChild(piege);
       show($('#btn-continuer'), false);
       show($('#btn-reecrire'), true);
@@ -695,13 +712,12 @@
       S.blanche.push({ date: today(), score, total: g.blanche.length });
       Store.addBlocks(g.loot);
       $('#fin-texte').textContent = 'Dictée blanche : ' + score + ' / ' + g.blanche.length;
+      const grid = el('div', 'resultats-blanche');
       g.blanche.forEach((r) => {
-        const line = el('div', 'ligne-blanche');
-        line.appendChild(el('span', r.correct ? 'puce ok' : 'puce sub', r.correct ? '✔' : '↻'));
-        const span = el('span', 'mot', r.correct ? r.target : r.answer + ' → ' + r.target);
-        line.appendChild(span);
-        details.appendChild(line);
+        grid.appendChild(el('span', 'puce mot ' + (r.correct ? 'ok' : 'sub'),
+          r.correct ? '✔ ' + r.target : r.answer + ' → ' + r.target));
       });
+      details.appendChild(grid);
     } else {
       const ok = new Set(g.session.results.filter((r) => r.correct).map((r) => r.word));
       $('#fin-texte').textContent = ok.size
@@ -716,11 +732,17 @@
     Store.save();
     const loot = $('#fin-butin');
     loot.innerHTML = '';
-    g.loot.forEach((m) => {
-      const img = el('img', 'bloc-butin');
-      img.src = Pixel.blockIcon(m, 48);
-      img.alt = Pixel.MATERIALS[m].nom;
-      loot.appendChild(img);
+    // butin regroupé par matériau : une icône et un nombre
+    const count = {};
+    g.loot.forEach((m) => { count[m] = (count[m] || 0) + 1; });
+    Object.keys(count).forEach((m) => {
+      const it = el('div', 'objet bloc-butin');
+      const img = el('img');
+      img.src = Pixel.blockIcon(m, 40);
+      img.alt = '';
+      it.appendChild(img);
+      it.appendChild(el('span', '', Pixel.MATERIALS[m].nom + ' × ' + count[m]));
+      loot.appendChild(it);
     });
     if (!sceneEnd) sceneEnd = new Pixel.MinerScene($('#mineur-fin'));
     sceneEnd.idle();
@@ -901,7 +923,7 @@
     'vers-clavier'() { S.settings.input = 'clavier'; Store.save(); openKeyboard(); },
     'clavier-virtuel'() { G.showKeyboard = true; openKeyboard(); },
     'valider-tuiles': submitTiles,
-    'effacer-tuiles'() { G.tiles.pool = G.tiles.pool.concat(G.tiles.answer); G.tiles.answer = []; drawTiles(); },
+    'effacer-tuiles'() { G.tiles.slots.forEach((x) => { x.used = false; }); G.tiles.answer = []; drawTiles(); },
     confirmer() { G.unsure = false; show($('#confirmation'), false); evaluate(G.pending); },
     hesiter() { G.unsure = true; show($('#confirmation'), false); evaluate(G.pending); },
     recommencer() {

@@ -109,21 +109,36 @@
     return ops.reverse();
   }
 
+  // Déterminants qu'on peut ne pas écrire (« jungle » accepté pour « la jungle »).
+  const DET = /^(le|la|les|l'|un|une|des|du|de la|de l'|au|aux|mon|ma|mes|ton|ta|tes|son|sa|ses|notre|nos|votre|vos|leur|leurs|ce|cet|cette|ces)(?:\s+|(?<='))(?=\S)/i;
+
+  /** Sépare le déterminant du mot : « l'attention » → { det: "l'", core: 'attention' }. */
+  function splitDeterminer(target) {
+    const t = String(target).normalize('NFC').trim().replace(/[’‘]/g, "'");
+    const m = t.match(DET);
+    if (!m) return { det: '', core: t };
+    return { det: m[1], core: t.slice(m[0].length) };
+  }
+
   /**
    * Verdict complet.
-   *  correct     : réponse identique au mot
+   *  correct     : réponse identique au mot (le déterminant peut être omis)
    *  accentOnly  : seuls des accents diffèrent (→ « Presque ! Regarde l'accent »)
    *  distance    : distance de Levenshtein
    *  ops         : alignement (voir align)
    *  answer      : réponse normalisée
+   *  target      : forme comparée (le mot sans déterminant si l'enfant ne l'a pas écrit)
    */
   function grade(answer, target) {
-    const t = String(target).normalize('NFC').trim();
+    let t = String(target).normalize('NFC').trim().replace(/[’‘]/g, "'");
     const a = normalize(answer, t);
+    // pas de déterminant dans la réponse : on compare au mot seul
+    const { det, core } = splitDeterminer(t);
+    if (det && !splitDeterminer(a).det && core) t = core;
     const correct = a === t;
     const accentOnly = !correct && a.length > 0 && stripAccents(a) === stripAccents(t);
     return { correct, accentOnly, distance: levenshtein(a, t), ops: align(a, t), answer: a, target: t };
   }
 
-  return { stripAccents, normalize, levenshtein, align, grade };
+  return { stripAccents, normalize, levenshtein, align, grade, splitDeterminer };
 });
