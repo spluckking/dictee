@@ -393,3 +393,17 @@ body.cursive .morceaux { font-weight: 400; }
 .colonne span { padding: 2px 0; }
 .grille-alignement .lettre-juste { font-size: min(clamp(2rem, 7vw, 3rem), calc(var(--case) * 0.8)); }
 .grille-alignement .lettre-enfant { font-size: min(1.4rem, calc(var(--case) * 0.6)); }
+
+/* Révision du jour et entraînement libre */
+.titre-entrainement { margin: 0; text-align: center; color: #fff; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); font-size: 0.7rem; }
+#btn-mode-du-jour:disabled { --c: #8d9196; filter: saturate(0.6); }
+.mine-libre { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.mine-libre p { margin: 0; }
+.mine-libre .btn { flex: 1 1 120px; }
+#bloc-tresors, #bloc-trophees { width: 100%; }
+@media (max-height: 620px) {
+  .mine-infos { gap: 4px; }
+  .mine-infos h3 { font-size: 0.6rem; }
+  #mine-texte { font-size: 1rem; }
+  .tresor { width: 28px; height: 28px; }
+}

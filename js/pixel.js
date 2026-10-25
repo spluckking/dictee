@@ -474,28 +474,25 @@
 
   /* ---------- La mine des souvenirs (phase 2) ---------- */
 
-  // Trésors trouvés en creusant (profondeur en blocs). Créations originales.
+  // Trésors spéciaux : un par semaine, dans cet ordre. Créations originales.
   const TREASURES = [
-    { depth: 3, id: 'lanterne', nom: 'une lanterne' },
-    { depth: 8, id: 'champignon', nom: 'un champignon lumineux' },
-    { depth: 15, id: 'fossile', nom: 'un fossile' },
-    { depth: 25, id: 'coffre', nom: 'un coffre' },
-    { depth: 35, id: 'geode', nom: 'une géode' },
-    { depth: 50, id: 'wagonnet', nom: 'un wagonnet' },
-    { depth: 65, id: 'statue', nom: 'une statue d\'or' },
-    { depth: 80, id: 'oeuf', nom: 'un œuf de pierre mystérieux' },
-    { depth: 100, id: 'couronne', nom: 'la couronne de la mine' }
+    { id: 'lanterne', nom: 'une lanterne' },
+    { id: 'champignon', nom: 'un champignon lumineux' },
+    { id: 'fossile', nom: 'un fossile' },
+    { id: 'coffre', nom: 'un coffre' },
+    { id: 'geode', nom: 'une géode' },
+    { id: 'wagonnet', nom: 'un wagonnet' },
+    { id: 'statue', nom: 'une statue d\'or' },
+    { id: 'oeuf', nom: 'un œuf de pierre mystérieux' },
+    { id: 'couronne', nom: 'la couronne de la mine' }
   ];
-  /** Trésor à une profondeur donnée (après 100 : une géode toutes les 25 couches). */
-  function treasureAt(depth) {
-    const t = TREASURES.find((x) => x.depth === depth);
-    if (t) return t;
-    if (depth > 100 && depth % 25 === 0) return { depth, id: 'geode', nom: 'une géode géante' };
-    return null;
+  /** n-ième trésor de la semaine (après la couronne : des géodes géantes). */
+  function treasureNumber(n) {
+    return TREASURES[n] || { id: 'geode', nom: 'une géode géante' };
   }
-  function nextTreasure(depth) {
-    for (let d = depth + 1; d < depth + 200; d++) { const t = treasureAt(d); if (t) return t; }
-    return null;
+  function treasureName(id) {
+    const t = TREASURES.find((x) => x.id === id);
+    return t ? t.nom : 'une géode géante';
   }
 
   const TREASURE_PAL = {
@@ -542,10 +539,12 @@
 
   /**
    * Coupe de la mine autour de la profondeur actuelle : le puits creusé au
-   * centre, le mineur au fond, les trésors trouvés dans les parois, et un
-   * « ? » pour le prochain trésor.
+   * centre, le mineur au fond et les trésors trouvés dans les parois, à la
+   * profondeur où ils ont été trouvés (found : [{ id, depth }]).
    */
-  function drawMine(canvas, depth, viewW, viewH) {
+  function drawMine(canvas, depth, viewW, viewH, found) {
+    const byDepth = {};
+    (found || []).forEach((f) => { (byDepth[f.depth] = byDepth[f.depth] || []).push(f.id); });
     const dpr = Math.min(2, root.devicePixelRatio || 1);
     const W = Math.round(viewW * dpr), H = Math.round(viewH * dpr);
     canvas.width = W; canvas.height = H;
@@ -573,18 +572,12 @@
         } else {
           drawBlock(g, layerAt(d), x, y, bs);
         }
-        // trésors déjà trouvés : dans la paroi à côté du puits
-        const t = treasureAt(d);
-        if (t && c === mid + 1 && d <= depth) {
+        // trésors trouvés : dans les parois à côté du puits
+        const ids = byDepth[d];
+        const k = c === mid + 1 ? 0 : c === mid - 1 ? 1 : -1;
+        if (ids && k >= 0 && ids[k]) {
           g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x + 2, y + 2, bs - 4, bs - 4);
-          const img = treasureCanvas(t.id);
-          g.drawImage(img, x + bs * 0.12, y + bs * 0.12, bs * 0.76, bs * 0.76);
-        }
-        if (t && c === mid + 1 && d > depth) {
-          g.fillStyle = 'rgba(255,255,255,0.85)';
-          g.font = 'bold ' + Math.round(bs * 0.6) + 'px sans-serif';
-          g.textAlign = 'center'; g.textBaseline = 'middle';
-          g.fillText('?', x + bs / 2, y + bs / 2);
+          g.drawImage(treasureCanvas(ids[k]), x + bs * 0.12, y + bs * 0.12, bs * 0.76, bs * 0.76);
         }
       }
     }
@@ -629,6 +622,6 @@
   }
 
   root.Pixel = { MATERIALS, BY_RARITY, randomMaterial, texture, drawBlock, blockIcon, drawMiner,
-    TREASURES, treasureAt, nextTreasure, treasureIcon, layerName, drawMine,
+    TREASURES, treasureNumber, treasureName, treasureIcon, layerName, drawMine,
     MinerScene, drawLandscape, PLANS, slotsOf, layout, drawWorld, drawAppIcon };
 })(self);

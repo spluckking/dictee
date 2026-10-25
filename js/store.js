@@ -11,7 +11,8 @@
  *   blanche: [{ date, score, total }],
  *   world: { blocks: ['terre', 'pierre', …] },   // blocs posés, dans l'ordre
  *   archive: { mot: { interval, ease, streak, nextDue, sentence, week, ok, fail } }, // phase 2 : la mine
- *   mine: { depth, found: [{ id, depth, date }], lastDay, today }, // récompenses de la phase 2
+ *   daily: { day, words, ok, done },  // révision du jour (phase 1) : tous les mots, une récompense
+ *   mine: { depth, found: [{ id, depth, date }], week, exp: { day, words, ok, done } }, // phase 2
  *   retired: [{ w, week, date }],    // mots sus pour toujours (sortis de la mine)
  *   settings: { sound, cursive, input: 'clavier' | 'tuiles', stylusDirect: false (true = pas de clavier virtuel automatique) },
  *   stats: { lastDay, sessionsToday }
@@ -67,7 +68,8 @@
       world: { blocks: [] },
       archive: {},
       retired: [],
-      mine: { depth: 0, found: [], lastDay: null, today: 0 },
+      daily: { day: null, words: [], ok: [], done: false },
+      mine: { depth: 0, found: [], week: null, exp: { day: null, words: [], ok: [], done: false } },
       settings: { sound: true, cursive: false, input: 'clavier', stylusDirect: false },
       stats: { lastDay: null, sessionsToday: 0 }
     };
@@ -84,8 +86,10 @@
         settings: Object.assign(d.settings, saved.settings),
         world: Object.assign(d.world, saved.world),
         stats: Object.assign(d.stats, saved.stats),
-        mine: Object.assign(d.mine, saved.mine)
+        mine: Object.assign(d.mine, saved.mine),
+        daily: Object.assign(d.daily, saved.daily)
       }) : d;
+      if (!state.mine.exp) state.mine.exp = d.mine.exp;
       // anciennes entrées de la grande révision (paliers fixes) → mémoire par mot
       Object.keys(state.archive).forEach((w) => { state.archive[w] = Leitner.migrateEntry(state.archive[w]); });
     } catch (e) {
@@ -151,6 +155,7 @@
     s.words = fresh;
     s.progress = {};
     s.blanche = [];
+    s.daily = { day: null, words: [], ok: [], done: false };
     s.weekStart = today;
     save();
   }

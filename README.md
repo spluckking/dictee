@@ -10,7 +10,7 @@ Application web progressive (PWA) pour aider un enfant de CE2 à apprendre sa li
 
 | Écran | Rôle |
 |---|---|
-| Accueil | Compte à rebours jusqu'à la dictée, mode du jour proposé, choix libre du mode, « Mon monde », son, espace parent |
+| Accueil | Compte à rebours jusqu'à la dictée, révision du jour (tous les mots, un coffre), entraînement libre sans récompense, « Mon monde », son, espace parent |
 | Dictée-flash | Le mot est lu (puis la phrase), l'enfant l'écrit, la correction s'affiche |
 | Regarder, cacher, écrire | Le mot s'affiche 3 secondes puis disparaît, l'enfant l'écrit |
 | Lettres mélangées | Reconstituer le mot avec des tuiles (toucher ou glisser) |
@@ -58,11 +58,14 @@ Sur le principe d'une méthode « multi malin » pour l'orthographe : chaque dif
 - raté : il revient dès le lendemain et sa facilité baisse, donc il reviendra plus souvent ensuite ;
 - après 4 réussites d'affilée et un écart d'au moins 45 jours (au moins 5 semaines au total), il est retiré : « su pour toujours », gravé dans la salle des trophées.
 
-Les actions sont volontairement limitées : une seule activité (dictée-flash avec « Sûr de moi / J'hésite »), une expédition de 10 mots au plus par jour, les mots les plus en retard d'abord, plus une expédition bonus s'il reste des mots en retard. Ensuite la mine est fermée jusqu'au lendemain. Récompense propre à la phase 2 : chaque mot réussi fait creuser d'un bloc (3 pour un mot su pour toujours) ; en descendant, on traverse la terre, la pierre, l'ardoise, la grotte de cristal puis le cœur de magma, et on trouve des trésors (lanterne, fossile, coffre, géode, wagonnet, statue d'or, couronne…).
+Deux catégories dans la mine :
 
-**Mode du jour** (dictée le vendredi) : Le bon mot jusqu'au lundi, Lettres mélangées le mardi, Regarder-cacher-écrire le mercredi, Dictée blanche le jeudi, Dictée-flash le jour même. L'enfant peut toujours choisir un autre mode.
+- **Expédition du jour** : uniquement les mots à réviser ce jour-là (10 au plus, les plus en retard d'abord), en dictée-flash avec « Sûr de moi / J'hésite ». Un mot raté revient dans l'expédition jusqu'à ce qu'il soit juste ; l'expédition est finie quand tous ses mots sont justes, une fois par jour. C'est elle qui fait avancer la mémoire des mots. Récompense spéciale une fois par semaine (de lundi à dimanche) : la première expédition réussie de la semaine fait descendre la mine de 5 blocs et trouver le trésor de la semaine (lanterne, champignon lumineux, fossile, coffre, géode, wagonnet, statue d'or, œuf mystérieux, couronne, puis géodes géantes).
+- **S'entraîner** (Dictée-flash, Lettres, Le bon mot) : 10 mots de la mine au hasard, sans effet sur leur mémoire. Bonus de base : chaque mot juste creuse 1 bloc (terre, pierre, ardoise, grotte de cristal, cœur de magma).
 
-**Récompenses** : chaque mot réussi rapporte un bloc commun (terre, planche, pierre, brique). Un mot qui passe en boîte 2 rapporte un bloc peu commun (verre, charbon, fer, cuivre), et un mot qui passe en boîte 3 un minerai rare (or, rubis, saphir, améthyste). Le monde est conservé d'une semaine à l'autre.
+**Révision du jour** (gros bouton vert de l'accueil) : tous les mots de la semaine, chaque jour jusqu'à la dictée, quel que soit leur niveau. Le premier jour, les mots nouveaux arrivent par paquets de 5 avec leur fiche d'étude. Un mot raté revient plus loin dans la révision jusqu'à ce qu'il soit juste ; si l'enfant s'arrête en cours de route, il reprend plus tard là où il en était. Quand tous les mots sont justes, la révision est finie pour la journée et rapporte **une seule récompense** : un coffre avec un bloc par mot (plus rare quand le mot est mieux su : boîte 1 bloc commun, boîte 2 peu commun, boîte 3 minerai rare), qui fait avancer la construction dans « Mon monde ». La semaine suivante, la révision du jour passe à la nouvelle liste.
+
+**S'entraîner (sans récompense)** : Dictée-flash, Regarder-cacher-écrire, Lettres mélangées, Le bon mot et Dictée blanche restent libres, autant que l'enfant veut, mais ne rapportent rien. Le monde est conservé d'une semaine à l'autre.
 
 ## Structure
 
@@ -74,7 +77,7 @@ css/style.css           boutons-blocs, panneaux, mise en page portrait et paysag
 fonts/                  Press Start 2P, Andika, Playwrite FR Moderne (OFL, en local)
 icons/                  icônes PNG générées depuis le pixel art (tools/make-icons.js)
 js/align.js             Levenshtein, alignement lettre à lettre, erreur d'accent
-js/leitner.js           boîtes, planification, choix des mots, file de séance, mode du jour
+js/leitner.js           boîtes, planification, choix des mots, file de séance, mémoire des mots de la phase 2
 js/distractors.js       fausses orthographes plausibles par règles
 js/syllables.js         découpage en syllabes pour l'indice
 js/traps.js             pièges d'orthographe, lieux (palais mental), morceaux colorés

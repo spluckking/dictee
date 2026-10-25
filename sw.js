@@ -9,7 +9,7 @@
  * instantanément depuis le cache ; si le réseau est là, les fichiers sont
  * rafraîchis pour le lancement suivant. Changer VERSION force un recache complet.
  */
-const VERSION = 'dictee-blocs-v7';
+const VERSION = 'dictee-blocs-v8';
 
 const ASSETS = [
   './',
