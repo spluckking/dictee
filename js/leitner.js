@@ -10,7 +10,9 @@
  * - réussite sans indice → boîte suivante (les modes de reconnaissance
  *   « Le bon mot » et « Lettres mélangées » ne font pas dépasser la boîte 2 :
  *   reconnaître n'est pas encore savoir écrire) ;
- * - réussite avec indice → le mot reste dans sa boîte ;
+ * - réussite avec indice, ou quand l'enfant dit « j'hésite » → le mot reste
+ *   dans sa boîte ;
+ * - une seule montée de boîte par jour et par mot ;
  * - erreur → retour en boîte 1, et le mot revient plus tard dans la séance.
  *
  * Les dates sont des chaînes locales « AAAA-MM-JJ ».
@@ -89,7 +91,7 @@
 
   /**
    * Applique le résultat d'une tentative et renvoie un NOUVEL état.
-   * result = { correct, usedHint, answer, mode, today, daysLeft }
+   * result = { correct, usedHint, unsure, answer, mode, today, daysLeft }
    * Le champ `change` indique ce qui s'est passé : 'up', 'same' ou 'down'.
    */
   function applyResult(state, result) {
@@ -98,10 +100,13 @@
     const before = s.box;
     const maxBox = RECOGNITION_MODES.indexOf(result.mode) >= 0 ? 2 : 3;
 
+    // Une seule montée de boîte par jour : c'est l'espacement qui fait retenir.
+    const sameDay = state && state.lastSeen === result.today;
     if (result.correct) {
       s.success++;
       if (result.usedHint) s.hinted++;
-      else if (s.box < maxBox) s.box++;
+      if (result.unsure) s.unsure = (s.unsure || 0) + 1;
+      if (!result.usedHint && !result.unsure && !sameDay && s.box < maxBox) s.box++;
     } else {
       s.fail++;
       s.box = 1;
@@ -216,6 +221,48 @@
     return Math.min(this.queue.length, this.maxAttempts - this.attempts);
   };
 
+  /* ---------- Phase 2 : grande révision des semaines passées ---------- */
+
+  /**
+   * Quand une nouvelle semaine commence, les mots des semaines précédentes
+   * passent en « grande révision » : ils reviennent après 2, 7, 14 puis 30
+   * jours. Après 4 réussites d'affilée (≈ 2 mois), le mot est retiré : il est
+   * su pour de bon. Une erreur le fait recommencer au début (revu le lendemain).
+   */
+  const ARCHIVE_INTERVALS = [2, 7, 14, 30];
+
+  /** Entrée de grande révision pour un mot de la semaine qui se termine. */
+  function archiveEntry(state, today, extra) {
+    const level = state && state.box === 3 ? 1 : 0;
+    return Object.assign({ level, ok: 0, fail: 0, added: today,
+      nextDue: addDays(today, ARCHIVE_INTERVALS[level]) }, extra || {});
+  }
+
+  /** Résultat d'une grande révision : { entry, retired }. */
+  function applyArchiveResult(entry, correct, today) {
+    const e = Object.assign({}, entry);
+    e.lastSeen = today;
+    if (correct) {
+      e.ok++;
+      e.level++;
+      if (e.level >= ARCHIVE_INTERVALS.length) return { entry: e, retired: true };
+      e.nextDue = addDays(today, ARCHIVE_INTERVALS[e.level]);
+    } else {
+      e.fail++;
+      e.level = 0;
+      e.nextDue = addDays(today, 1);
+    }
+    return { entry: e, retired: false };
+  }
+
+  /** Mots de grande révision à revoir aujourd'hui (les plus en retard d'abord). */
+  function dueArchive(archive, today, max) {
+    return Object.keys(archive || {})
+      .filter((w) => archive[w].nextDue <= today)
+      .sort((a, b) => archive[a].nextDue.localeCompare(archive[b].nextDue) || archive[a].level - archive[b].level)
+      .slice(0, max == null ? 5 : max);
+  }
+
   /* ---------- Mode du jour ---------- */
 
   /**
@@ -238,6 +285,7 @@
   return {
     RECOGNITION_MODES, todayStr, addDays, diffDays, daysUntilDictation,
     intervalFor, nextDueDate, newWordState, isDue, applyResult, topErrors,
-    pickSessionWords, planSession, Session, dailyMode
+    pickSessionWords, planSession, Session, dailyMode,
+    ARCHIVE_INTERVALS, archiveEntry, applyArchiveResult, dueArchive
   };
 });

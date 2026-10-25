@@ -6,8 +6,13 @@
  *          lettres (lettres mélangées), choix (le bon mot), blanche (dictée blanche).
  *
  * Déroulé d'un mot (sauf dictée blanche) :
- *   présentation → saisie → (confirmation si clavier) → correction
+ *   (fiche d'étude si le mot est nouveau) → présentation → saisie
+ *   → confirmation + auto-évaluation (« Sûr de moi » / « J'hésite ») → correction
  *   → si erreur : l'enfant regarde le mot, il est caché, il le réécrit de mémoire.
+ *
+ * Méthodes mélangées : répétition espacée (leitner.js), rappel actif et
+ * auto-évaluation, palais mental + fractionnement + carte mentale (traps.js),
+ * et phase 2 « grande révision » des semaines passées.
  */
 (function () {
   'use strict';
@@ -76,6 +81,12 @@
     const su = words.filter((w) => S.progress[w] && S.progress[w].box === 3).length;
     $('#resume-mots').textContent = (S.listTitle ? S.listTitle + ' · ' : '') + words.length + ' mots cette semaine · ' + su + ' déjà sus · ' +
       (due ? due + ' à revoir aujourd\'hui' : 'tout est revu pour aujourd\'hui !');
+    const nArch = Object.keys(S.archive || {}).length;
+    const dueArch = Leitner.dueArchive(S.archive, today(), 99).length;
+    $('#resume-revision').textContent = nArch
+      ? 'Grande révision : ' + nArch + ' mots des semaines passées' + (dueArch ? ' (' + dueArch + ' à revoir aujourd\'hui)' : '') +
+        (S.retired && S.retired.length ? ' · ' + S.retired.length + ' sus pour toujours' : '')
+      : '';
     const mode = Leitner.dailyMode(d);
     $('#nom-mode-du-jour').textContent = MODES[mode];
     $('#btn-mode-du-jour').dataset.mode = mode;
@@ -91,8 +102,9 @@
   function startSession(mode) {
     Sound.unlock();
     const words = Store.allWords();
-    if (!words.length) { alert('La liste est vide : demande à un adulte de l\'ajouter dans l\'espace parent.'); return; }
-    let list, options, discovery = false;
+    const archDue = mode === 'blanche' ? [] : Leitner.dueArchive(S.archive, today(), 5).filter((w) => words.indexOf(w) < 0);
+    if (!words.length && !archDue.length) { alert('La liste est vide : demande à un adulte de l\'ajouter dans l\'espace parent.'); return; }
+    let list, options, discovery = false, packets = {}, packetCount = 0;
     if (mode === 'blanche') {
       list = shuffle(words);
       options = { maxAttempts: words.length, maxMs: Infinity, maxRetries: 0 };
@@ -100,10 +112,28 @@
       // première séance de la semaine : tous les mots ; ensuite : révisions espacées
       const plan = Leitner.planSession(words, S.progress, today(), 15);
       list = plan.words; options = plan.options; discovery = plan.discovery;
+      if (discovery) {
+        // fractionnement : les mots nouveaux par paquets de 5, regroupés par lieu (même piège)
+        const fresh = list.filter((w) => !S.progress[w] || !S.progress[w].lastSeen);
+        const rank = (w) => Traps.ORDER.concat(['simple']).indexOf(Traps.detect(w).place);
+        const sorted = fresh.slice().sort((a, b) => rank(a) - rank(b) || fresh.indexOf(a) - fresh.indexOf(b));
+        sorted.forEach((w, i) => { packets[w] = Math.floor(i / 5); });
+        packetCount = Math.ceil(sorted.length / 5);
+        list = sorted.concat(list.filter((w) => sorted.indexOf(w) < 0));
+      } else {
+        // phase 2 : quelques mots des semaines passées à la fin de la séance
+        list = list.concat(archDue);
+        options = Object.assign({}, options, { maxAttempts: options.maxAttempts + archDue.length });
+      }
     }
     G = {
       mode,
       discovery,
+      packets,
+      packetCount,
+      currentPacket: -1,
+      archived: new Set(archDue),
+      retired: [],
       session: new Leitner.Session(list, options),
       loot: [],
       blanche: [],
@@ -123,6 +153,17 @@
     closeKeyboard();
     const w = G.session.next();
     if (!w) return endSession();
+    // nouveau paquet (découverte) : petite carte d'annonce, avec possibilité de faire une pause
+    if (G.discovery && G.packets[w] != null && G.packets[w] > G.currentPacket && isNew(w)) {
+      G.currentPacket = G.packets[w];
+      return showPacket(w);
+    }
+    startWord(w);
+  }
+
+  function isNew(w) { return !G.archived.has(w) && (!S.progress[w] || !S.progress[w].lastSeen); }
+
+  function startWord(w) {
     const info = Store.findWord(w) || { w, sentence: '' };
     G.word = w;
     G.sentence = info.sentence;
@@ -130,12 +171,17 @@
     G.rewrite = 0;
     G.phase = 'saisie';
     G.answered = false;
+    G.unsure = false;
     const n = G.session.attempts;
-    $('#compteur-mot').textContent = (G.discovery ? 'Découverte · ' : '') + 'Mot ' + n +
+    $('#compteur-mot').textContent = (G.archived.has(w) ? 'Grande révision · ' : G.discovery ? 'Découverte · ' : '') + 'Mot ' + n +
       (G.mode === 'blanche' || G.discovery ? ' / ' + G.total : '');
     resetZones();
+    // mot jamais vu : fiche d'étude (découpage, piège, lieu), puis on cache
+    if (G.mode !== 'blanche' && isNew(w) && !G.studied) return showStudyCard();
+    const studied = G.studied;
+    G.studied = false;
     const mode = G.mode;
-    if (mode === 'regarder') return lookCoverWrite();
+    if (mode === 'regarder' && !studied) return lookCoverWrite();
     if (mode === 'choix') renderChoices();
     else if (mode === 'lettres') renderTiles(w, false);
     else openInput();
@@ -144,7 +190,83 @@
     speakWord();
   }
 
+  /* ----- Paquets et fiche d'étude ----- */
+
+  function showPacket(w) {
+    resetZones();
+    show($('.outils'), false);
+    const place = Traps.PLACES[Traps.detect(w).place];
+    const box = $('#paquet');
+    box.innerHTML = '';
+    box.appendChild(el('p', 'titre-pixel petit paquet-titre', 'Paquet ' + (G.currentPacket + 1) + ' / ' + G.packetCount));
+    box.appendChild(placeBadge(Traps.detect(w).place));
+    box.appendChild(el('p', 'aide', place.regle));
+    const row = el('div', 'ligne-boutons');
+    const go = el('button', 'btn btn-herbe', G.currentPacket ? 'On continue !' : 'C\'est parti !');
+    go.addEventListener('click', () => { show(box, false); startWord(w); });
+    row.appendChild(go);
+    if (G.currentPacket > 0) {
+      const pause = el('button', 'btn btn-pierre', 'Pause, je reviens plus tard');
+      pause.addEventListener('click', () => { show(box, false); endSession(); });
+      row.appendChild(pause);
+    }
+    box.appendChild(row);
+    show(box, true);
+    $('#compteur-mot').textContent = 'Découverte';
+  }
+
+  /** Pastille d'un lieu (palais mental) : bloc coloré + nom du lieu. */
+  function placeBadge(placeId) {
+    const p = Traps.PLACES[placeId];
+    const b = el('div', 'lieu');
+    b.style.setProperty('--lieu', p.couleur);
+    const img = el('img');
+    img.src = Pixel.blockIcon(PLACE_BLOCK[placeId] || 'terre', 32);
+    img.alt = '';
+    b.appendChild(img);
+    b.appendChild(el('span', '', p.nom));
+    return b;
+  }
+
+  const PLACE_BLOCK = { tion: 'saphir', muette: 'amethyste', double: 'brique', mbp: 'cuivre', h: 'pierre',
+    accent: 'or', sons: 'herbe', simple: 'terre' };
+
+  /** Mot découpé en syllabes, pièges colorés selon leur lieu (fractionnement). */
+  function chunkedWord(word, cls) {
+    const p = el('div', 'mot morceaux ' + (cls || ''));
+    Traps.chunks(word, Syllables.split(word)).forEach((c) => {
+      if (c.sep) p.appendChild(el('span', 'point', '·'));
+      const sp = el('span', c.trap ? 'piege' : '', c.text);
+      if (c.trap) sp.style.setProperty('--lieu', Traps.PLACES[c.trap].couleur);
+      p.appendChild(sp);
+    });
+    return p;
+  }
+
+  function showStudyCard() {
+    const w = G.word;
+    const d = Traps.detect(w);
+    const box = $('#fiche');
+    box.innerHTML = '';
+    box.appendChild(el('p', 'consigne', 'Nouveau mot ! Regarde-le bien.'));
+    box.appendChild(chunkedWord(w, 'grand-mot'));
+    box.appendChild(placeBadge(d.place));
+    box.appendChild(el('p', 'aide', 'Ce mot habite ici. ' + Traps.PLACES[d.place].regle));
+    if (G.sentence) box.appendChild(el('p', 'phrase', G.sentence));
+    const go = el('button', 'btn btn-saphir', 'Je l\'ai bien regardé, je le cache !');
+    go.addEventListener('click', () => {
+      show(box, false);
+      G.studied = true;
+      startWord(w);
+    });
+    box.appendChild(go);
+    show(box, true);
+    show($('.outils'), false);
+    Speech.dictate(w, G.sentence);
+  }
+
   function resetZones() {
+    ['#paquet', '#fiche'].forEach((s) => show($(s), false));
     ['#indice', '#mot-montre', '#saisie-clavier', '#saisie-tuiles', '#confirmation', '#choix', '#correction']
       .forEach((s) => show($(s), false));
     $('#indice').innerHTML = '';
@@ -216,14 +338,14 @@
       const masked = maskWord(G.sentence, G.word);
       box.appendChild(el('p', 'phrase', masked));
     }
+    // palais mental : le lieu où habite le mot rappelle son piège
+    const place = Traps.detect(G.word).place;
+    box.appendChild(placeBadge(place));
+    box.appendChild(el('p', 'aide', Traps.PLACES[place].regle));
     if (G.mode !== 'choix') {
-      // syllabes montrées 3 secondes puis cachées (on ne recopie pas en regardant)
+      // syllabes et pièges montrés 3 secondes puis cachés (on ne recopie pas en regardant)
       const syl = Syllables.split(G.word);
-      const p = el('p', 'syllabes mot');
-      syl.forEach((s, i) => {
-        if (i) p.appendChild(el('span', 'point', '·'));
-        p.appendChild(el('span', 'syllabe', s));
-      });
+      const p = chunkedWord(G.word, 'syllabes');
       box.appendChild(p);
       box.appendChild(el('p', 'aide', syl.length + (syl.length > 1 ? ' syllabes' : ' syllabe')));
       setTimeout(() => { p.classList.add('cache'); }, 3000);
@@ -349,7 +471,8 @@
     if (!G || !G.tiles) return;
     const answer = G.tiles.answer.map((t) => t.c).join('');
     if (!answer) return;
-    evaluate(answer);
+    G.inputKind = 'tuiles';
+    askConfirmation(answer);
   }
 
   /* ----- Clavier + confirmation ----- */
@@ -358,9 +481,22 @@
     const v = Align.normalize($('#champ').value, G.word);
     if (!v) return;
     closeKeyboard();
+    G.inputKind = 'clavier';
+    askConfirmation(v);
+  }
+
+  /**
+   * Confirmation de la réponse + auto-évaluation : « Sûr de moi » ou
+   * « J'hésite ». Un mot juste mais hésitant ne monte pas de boîte.
+   */
+  function askConfirmation(v) {
     show($('#saisie-clavier'), false);
+    show($('#saisie-tuiles'), false);
     $('#reconnu').textContent = v;
     G.pending = v;
+    const rewrite = G.phase === 'reecriture';
+    show($('#btn-hesite'), !rewrite);
+    $('#btn-sur').textContent = rewrite ? 'C\'est ce que j\'ai écrit' : '😎 Sûr de moi';
     show($('#confirmation'), true);
   }
 
@@ -392,11 +528,29 @@
     if (G.answered) return;
     G.answered = true;
     const res = Align.grade(answer, G.word);
-    const st = Leitner.applyResult(S.progress[G.word], {
-      correct: res.correct, usedHint: G.usedHint, answer: res.answer, mode: G.mode,
-      today: today(), daysLeft: daysLeft()
-    });
-    S.progress[G.word] = st;
+    let st;
+    if (G.archived.has(G.word)) {
+      // phase 2 : grande révision d'un mot d'une semaine passée. En mode
+      // reconnaissance (Le bon mot, Lettres), une réussite ne fait pas avancer
+      // le mot : il faut l'écrire de mémoire.
+      const recognition = Leitner.RECOGNITION_MODES.indexOf(G.mode) >= 0;
+      const neutral = res.correct && (recognition || G.usedHint || G.unsure);
+      const r = neutral ? { entry: S.archive[G.word], retired: false }
+        : Leitner.applyArchiveResult(S.archive[G.word], res.correct, today());
+      if (r.retired) {
+        delete S.archive[G.word];
+        S.retired.push({ w: G.word, week: r.entry.week || '', date: today() });
+        G.retired.push(G.word);
+        G.archived.delete(G.word);
+      } else S.archive[G.word] = r.entry;
+      st = { change: r.retired ? 'up' : 'same', box: r.retired ? 3 : 2, archive: true, retired: r.retired };
+    } else {
+      st = Leitner.applyResult(S.progress[G.word], {
+        correct: res.correct, usedHint: G.usedHint, unsure: G.unsure, answer: res.answer, mode: G.mode,
+        today: today(), daysLeft: daysLeft()
+      });
+      S.progress[G.word] = st;
+    }
     G.session.report(G.word, res.correct, G.usedHint);
     Store.save();
 
@@ -421,18 +575,27 @@
       Store.addBlocks([mat]);
       updateLoot(mat);
       const m = Pixel.MATERIALS[mat];
-      $('#message').textContent = pick(BRAVO) + ' Tu gagnes : ' + m.nom +
+      $('#message').textContent = (st.retired ? 'Ce mot est su pour toujours ! ' : pick(BRAVO)) + ' Tu gagnes : ' + m.nom +
         (st.change === 'up' && st.box === 3 ? ' (rare !)' : '') +
-        (G.usedHint ? ' · avec un indice, le mot reste dans sa boîte' : '');
+        (G.usedHint ? ' · avec un indice, le mot reste dans sa boîte' :
+          G.unsure ? ' · Tu hésitais, mais c\'est juste ! On le reverra pour être sûr.' : '');
       $('#message').className = 'message bravo';
       show($('#btn-continuer'), true);
       show($('#btn-reecrire'), false);
       $('#consigne').textContent = '';
       sceneGame.celebrate(mat, (n) => (n < 3 ? Sound.hit() : Sound.crack())).then(() => Sound.success());
     } else {
-      $('#message').textContent = res.accentOnly ? 'Presque ! Regarde l\'accent.' : 'On réessaie !';
+      $('#message').textContent = (res.accentOnly ? 'Presque ! Regarde l\'accent.' : 'On réessaie !') +
+        (G.unsure || G.mode === 'choix' ? '' : ' Tu étais sûr de toi : regarde bien la différence.');
       $('#message').className = 'message doux';
       $('#consigne').textContent = 'Regarde bien le mot juste.';
+      // le piège du mot, découpé et coloré, et son lieu
+      const d = Traps.detect(G.word);
+      const piege = el('div', 'piege-correction');
+      piege.appendChild(chunkedWord(G.word));
+      piege.appendChild(placeBadge(d.place));
+      piege.appendChild(el('p', 'aide', Traps.PLACES[d.place].regle));
+      $('#alignement').appendChild(piege);
       show($('#btn-continuer'), false);
       show($('#btn-reecrire'), true);
       Sound.soft();
@@ -441,6 +604,7 @@
 
   /** Bloc gagné : rare si le mot passe en boîte 3, peu commun s'il passe en boîte 2. */
   function rewardFor(st) {
+    if (st.archive) return Pixel.randomMaterial(st.retired ? 3 : 2);
     if (st.change === 'up' && st.box === 3) return Pixel.randomMaterial(3);
     if (st.change === 'up' && st.box === 2) return Pixel.randomMaterial(2);
     return Pixel.randomMaterial(1);
@@ -544,6 +708,9 @@
         ? 'Tu as réussi ' + ok.size + (ok.size > 1 ? ' mots' : ' mot') + ' et gagné ' + g.loot.length + (g.loot.length > 1 ? ' blocs !' : ' bloc !')
         : 'Tu t\'es bien entraîné, c\'est comme ça qu\'on apprend !';
     }
+    if (g.retired.length) {
+      details.appendChild(el('p', 'grand', '🏆 Sus pour toujours : ' + g.retired.join(', ')));
+    }
     S.stats.sessionsToday = S.stats.lastDay === today() ? S.stats.sessionsToday + 1 : 1;
     S.stats.lastDay = today();
     Store.save();
@@ -638,8 +805,71 @@
     });
     const sb = $('#scores-blanche');
     sb.textContent = S.blanche.length ? 'Dictées blanches : ' + S.blanche.map((b) => formatDate(b.date) + ' → ' + b.score + '/' + b.total).join(' · ') : '';
-    const missed = Store.missedWords();
-    $('#liste-rates').textContent = missed.length ? missed.join(', ') : 'aucun';
+    $('#liste-rates').textContent = S.words.length + ' mots';
+    renderArchive();
+  }
+
+  /** Tableau de la phase 2 (grande révision). */
+  function renderArchive() {
+    const t = $('#grande-revision');
+    t.innerHTML = '';
+    const words = Object.keys(S.archive).sort((a, b) => S.archive[a].nextDue.localeCompare(S.archive[b].nextDue));
+    $('#grande-revision-info').textContent = (words.length ? words.length + ' mots en grande révision.' : 'Aucun mot en grande révision pour l\'instant.') +
+      (S.retired.length ? ' Sus pour toujours : ' + S.retired.length + ' (' + S.retired.slice(-10).map((r) => r.w).join(', ') + (S.retired.length > 10 ? '…' : '') + ').' : '');
+    if (!words.length) return;
+    const head = el('tr');
+    ['Mot', 'Semaine', 'Étape', 'Prochaine révision', 'Erreurs'].forEach((h) => head.appendChild(el('th', '', h)));
+    t.appendChild(head);
+    words.forEach((w) => {
+      const a = S.archive[w];
+      const tr = el('tr');
+      tr.appendChild(el('td', 'mot', w));
+      tr.appendChild(el('td', '', a.week || '—'));
+      tr.appendChild(el('td', '', (a.level + 1) + ' / ' + Leitner.ARCHIVE_INTERVALS.length));
+      tr.appendChild(el('td', '', a.nextDue <= today() ? 'aujourd\'hui' : formatDate(a.nextDue)));
+      tr.appendChild(el('td', '', String(a.fail)));
+      t.appendChild(tr);
+    });
+  }
+
+  /* ---------------- Ma carte des pièges (carte mentale) ---------------- */
+
+  /**
+   * Carte mentale : « Mes mots » au centre, une branche par lieu (piège),
+   * les mots de la semaine sur chaque branche (couleur = boîte), et les mots
+   * des semaines passées en plus petit. Toucher un mot le fait entendre.
+   */
+  function renderMap() {
+    showScreen('carte');
+    const box = $('#carte');
+    box.innerHTML = '';
+    const centre = el('div', 'carte-centre');
+    centre.appendChild(el('span', 'titre-pixel petit', 'Mes mots'));
+    if (S.listTitle) centre.appendChild(el('span', '', S.listTitle));
+    box.appendChild(centre);
+    const groups = {};
+    S.words.forEach((x) => { (groups[Traps.detect(x.w).place] = groups[Traps.detect(x.w).place] || { cur: [], old: [] }).cur.push(x.w); });
+    Object.keys(S.archive).forEach((w) => { (groups[Traps.detect(w).place] = groups[Traps.detect(w).place] || { cur: [], old: [] }).old.push(w); });
+    const branches = el('div', 'carte-branches');
+    Traps.ORDER.concat(['simple']).filter((p) => groups[p]).forEach((p) => {
+      const b = el('div', 'branche');
+      b.style.setProperty('--lieu', Traps.PLACES[p].couleur);
+      b.appendChild(placeBadge(p));
+      b.appendChild(el('p', 'aide', Traps.PLACES[p].regle));
+      const chips = el('div', 'feuilles');
+      groups[p].cur.forEach((w) => chips.appendChild(mapChip(w, 'boite-' + ((S.progress[w] || {}).box || 1))));
+      groups[p].old.forEach((w) => chips.appendChild(mapChip(w, 'ancien')));
+      b.appendChild(chips);
+      branches.appendChild(b);
+    });
+    box.appendChild(branches);
+  }
+
+  function mapChip(w, cls) {
+    const c = el('button', 'feuille ' + cls);
+    c.appendChild(chunkedWord(w));
+    c.addEventListener('click', () => { const x = Store.findWord(w); Speech.dictate(w, x ? x.sentence : ''); });
+    return c;
   }
 
   function formatDate(str) {
@@ -672,8 +902,14 @@
     'clavier-virtuel'() { G.showKeyboard = true; openKeyboard(); },
     'valider-tuiles': submitTiles,
     'effacer-tuiles'() { G.tiles.pool = G.tiles.pool.concat(G.tiles.answer); G.tiles.answer = []; drawTiles(); },
-    confirmer() { show($('#confirmation'), false); evaluate(G.pending); },
-    recommencer() { show($('#confirmation'), false); openKeyboard(); },
+    confirmer() { G.unsure = false; show($('#confirmation'), false); evaluate(G.pending); },
+    hesiter() { G.unsure = true; show($('#confirmation'), false); evaluate(G.pending); },
+    recommencer() {
+      show($('#confirmation'), false);
+      if (G.inputKind === 'tuiles') renderTiles(G.word, G.mode !== 'lettres');
+      else openKeyboard();
+    },
+    carte: renderMap,
     continuer() { clearTimeout(G.timer); nextWord(); },
     reecrire: startRewrite,
     'enregistrer-liste'() {

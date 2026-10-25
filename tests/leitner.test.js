@@ -170,3 +170,51 @@ test('un mot ajouté en cours de semaine relance une séance complète, nouveau 
   assert.equal(plan.discovery, true);
   assert.deepEqual(plan.words, ['c', 'b', 'a']);
 });
+
+test('une seule montée de boîte par jour', () => {
+  let s = L.applyResult(null, { correct: true, mode: 'flash', today: MON, daysLeft: 4 });
+  assert.equal(s.box, 2);
+  s = L.applyResult(s, { correct: true, mode: 'flash', today: MON, daysLeft: 4 });
+  assert.equal(s.box, 2, 'pas de 2e montée le même jour');
+  s = L.applyResult(s, { correct: true, mode: 'flash', today: TUE, daysLeft: 3 });
+  assert.equal(s.box, 3);
+});
+
+test('auto-évaluation « j\'hésite » : réussite comptée, mais pas de montée', () => {
+  const s = L.applyResult({ box: 1 }, { correct: true, unsure: true, mode: 'flash', today: MON, daysLeft: 4 });
+  assert.equal(s.box, 1);
+  assert.equal(s.success, 1);
+  assert.equal(s.unsure, 1);
+});
+
+test('grande révision : 2, 7, 14, 30 jours puis retrait', () => {
+  let e = L.archiveEntry({ box: 2 }, MON);
+  assert.equal(e.level, 0);
+  assert.equal(e.nextDue, L.addDays(MON, 2));
+  assert.equal(L.archiveEntry({ box: 3 }, MON).nextDue, L.addDays(MON, 7), 'un mot su commence plus loin');
+  let day = MON, r;
+  const seen = [];
+  for (let i = 0; i < 4; i++) {
+    day = e.nextDue;
+    r = L.applyArchiveResult(e, true, day);
+    e = r.entry;
+    seen.push(L.diffDays(day, e.nextDue || day));
+  }
+  assert.equal(r.retired, true);
+  assert.deepEqual(seen.slice(0, 3), [7, 14, 30]);
+});
+
+test('grande révision : une erreur fait recommencer, revu le lendemain', () => {
+  const r = L.applyArchiveResult({ level: 2, ok: 2, fail: 0, nextDue: MON }, false, MON);
+  assert.equal(r.retired, false);
+  assert.equal(r.entry.level, 0);
+  assert.equal(r.entry.nextDue, TUE);
+});
+
+test('grande révision : au plus 5 mots dus, les plus en retard d\'abord', () => {
+  const a = {};
+  'abcdefg'.split('').forEach((w, i) => { a[w] = { level: 0, nextDue: L.addDays(MON, i - 6) }; });
+  a.z = { level: 0, nextDue: FRI };
+  assert.deepEqual(L.dueArchive(a, MON), ['a', 'b', 'c', 'd', 'e']);
+  assert.ok(!L.dueArchive(a, MON, 10).includes('z'));
+});

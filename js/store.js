@@ -10,6 +10,8 @@
  *   progress: { mot: étatLeitner },  // voir leitner.js
  *   blanche: [{ date, score, total }],
  *   world: { blocks: ['terre', 'pierre', …] },   // blocs posés, dans l'ordre
+ *   archive: { mot: { level, nextDue, sentence, week, ok, fail } }, // phase 2 : grande révision
+ *   retired: [{ w, week, date }],    // mots sus pour toujours (sortis de la grande révision)
  *   settings: { sound, cursive, input: 'clavier' | 'tuiles', stylusDirect: false (true = pas de clavier virtuel automatique) },
  *   stats: { lastDay, sessionsToday }
  * }
@@ -62,6 +64,8 @@
       progress: {},
       blanche: [],
       world: { blocks: [] },
+      archive: {},
+      retired: [],
       settings: { sound: true, cursive: false, input: 'clavier', stylusDirect: false },
       stats: { lastDay: null, sessionsToday: 0 }
     };
@@ -94,7 +98,13 @@
   /** Mots de la séance : liste de la semaine + mots gardés en révision. */
   function allWords() { return get().words.map((x) => x.w); }
 
-  function findWord(w) { return get().words.find((x) => x.w === w); }
+  function findWord(w) {
+    const s = get();
+    const x = s.words.find((y) => y.w === w);
+    if (x) return x;
+    const a = s.archive[w];
+    return a ? { w, sentence: a.sentence || '', archived: true } : undefined;
+  }
 
   /** Remplace la liste (mode parent) en gardant la progression des mots inchangés. */
   function setList(text) {
@@ -106,7 +116,7 @@
     save();
   }
 
-  /** Mots « ratés » : pas encore en boîte 3 (proposés en révision la semaine suivante). */
+  /** Mots de la semaine pas encore en boîte 3. */
   function missedWords() {
     const s = get();
     return s.words.filter((x) => {
@@ -115,19 +125,28 @@
     }).map((x) => x.w);
   }
 
-  /** Nouvelle semaine : nouvelle liste, progression remise à zéro. Le monde est conservé. */
-  function newWeek(text, keepMissed) {
+  /**
+   * Nouvelle semaine : nouvelle liste, progression remise à zéro. Le monde est
+   * conservé. Si `archiveOld`, les mots de la semaine qui se termine passent
+   * en grande révision (phase 2), sauf ceux qui reviennent dans la nouvelle liste.
+   */
+  function newWeek(text, archiveOld) {
     const s = get();
-    const kept = keepMissed ? missedWords().map((w) => {
-      const o = findWord(w);
-      return { w, sentence: o ? o.sentence : '', review: true };
-    }) : [];
+    const today = Leitner.todayStr();
     const fresh = parseList(text);
     const names = fresh.map((x) => x.w);
-    s.words = fresh.concat(kept.filter((x) => names.indexOf(x.w) < 0));
+    if (archiveOld) {
+      s.words.forEach((x) => {
+        if (names.indexOf(x.w) >= 0 || s.archive[x.w]) return;
+        s.archive[x.w] = Leitner.archiveEntry(s.progress[x.w], today,
+          { sentence: x.sentence || '', week: s.listTitle || '' });
+      });
+    }
+    names.forEach((w) => { delete s.archive[w]; });
+    s.words = fresh;
     s.progress = {};
     s.blanche = [];
-    s.weekStart = Leitner.todayStr();
+    s.weekStart = today;
     save();
   }
 

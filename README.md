@@ -23,13 +23,34 @@ Application web progressive (PWA) pour aider un enfant de CE2 à apprendre sa li
 
 1. **Récupération active** : le mot n'est jamais visible pendant que l'enfant l'écrit. Après une erreur, l'enfant regarde le mot juste, puis il est caché et l'enfant le réécrit de mémoire.
 2. **Boîtes de Leitner (3 boîtes)**, planifiées selon les jours restants avant la dictée (`js/leitner.js`) :
-   - réussite sans indice : boîte suivante ; avec indice : le mot reste dans sa boîte ; erreur : retour en boîte 1 et le mot revient 3 mots plus loin dans la séance (2 fois au plus) ;
+   - réussite sans indice : boîte suivante (une fois par jour au plus) ; avec indice ou « J'hésite » : le mot reste dans sa boîte ; erreur : retour en boîte 1 et le mot revient 3 mots plus loin dans la séance (2 fois au plus) ;
    - boîte 1 revue chaque jour ; boîte 2 tous les 2 jours si la dictée est dans 4 jours ou plus ; boîte 3 tous les 2 ou 3 jours ;
    - aucune révision n'est planifiée après la veille de la dictée : tout est revu ce jour-là ;
    - les modes de reconnaissance (Le bon mot, Lettres mélangées) ne font pas dépasser la boîte 2.
 3. **Feedback immédiat et bienveillant** : la réponse est alignée sur le mot juste (Levenshtein), lettres justes en vert, lettres fausses, manquantes ou en trop en orange. Une erreur d'accent seule affiche « Presque ! Regarde l'accent ». Sinon : « On réessaie ! ». Pas de vie perdue, pas de chrono, pas de son négatif.
 4. **Première séance de la semaine** : tous les mots de la liste, en une fois, quel que soit leur nombre. **Ensuite, séances courtes** de révision espacée : 15 mots ou 10 minutes, puis un écran de félicitations. Un mot ajouté en cours de semaine relance une séance complète.
 5. **Double codage** : le bouton « Indice » montre la phrase (mot masqué) et les syllabes pendant 3 secondes, et les lit. Un mot réussi avec indice ne monte pas de boîte.
+
+### Méthodes de mémorisation mélangées
+
+Sur le principe d'une méthode « multi malin » pour l'orthographe : chaque difficulté a un lieu et une petite règle, et tout est calculé automatiquement à partir des mots, donc ça marche avec n'importe quelle nouvelle liste (`js/traps.js`).
+
+| Méthode | Dans l'appli |
+|---|---|
+| Répétition espacée | Boîtes de Leitner pendant la semaine, puis grande révision (phase 2) |
+| Rappel actif | Le mot est toujours écrit de mémoire, jamais recopié |
+| Auto-évaluation | Après chaque réponse : « 😎 Sûr de moi » ou « 🤔 J'hésite ». Un mot juste mais hésitant ne monte pas de boîte ; un mot faux alors que l'enfant était sûr est signalé |
+| Palais mental (lieux) | Chaque type de piège est un lieu du monde : l'île des -tion, le château des lettres muettes, la tour des lettres doubles, le pont du m, le puits du h muet, la grotte des accents, la forêt des sons cachés, la prairie des mots tranquilles. Chaque mot « habite » dans le lieu de son piège principal, rappelé dans l'indice et la correction |
+| Fractionnement | Mots découpés en syllabes, pièges colorés selon leur lieu. La découverte se fait par paquets de 5 mots regroupés par lieu, avec une pause possible entre deux paquets |
+| Carte mentale | Écran « 🗺️ Ma carte des pièges » : « Mes mots » au centre, une branche par lieu, les mots de la semaine (couleur = boîte) et ceux des semaines passées. Toucher un mot le fait entendre |
+
+**Fiche d'étude** : la première fois qu'un mot apparaît, l'enfant voit sa fiche (mot découpé, pièges colorés, lieu, phrase lue), puis la fiche est cachée et il écrit le mot.
+
+**Une seule montée de boîte par jour et par mot** : c'est l'espacement entre les jours qui fait retenir.
+
+### Phase 2 : grande révision
+
+À chaque nouvelle semaine, les mots de la semaine qui se termine passent en grande révision. Ils reviennent après 2, 7, 14 puis 30 jours (un mot déjà su commence à 7 jours), 5 au plus par séance, à la fin des séances de révision. Une réussite écrite de mémoire, sans indice ni hésitation, le fait avancer ; une erreur le fait recommencer (revu le lendemain). Après 4 réussites d'affilée (environ 2 mois), le mot est retiré : il est « su pour toujours » et rapporte un minerai rare. En mode Le bon mot ou Lettres mélangées, une réussite ne fait pas avancer le mot.
 
 **Mode du jour** (dictée le vendredi) : Le bon mot jusqu'au lundi, Lettres mélangées le mardi, Regarder-cacher-écrire le mercredi, Dictée blanche le jeudi, Dictée-flash le jour même. L'enfant peut toujours choisir un autre mode.
 
@@ -48,6 +69,7 @@ js/align.js             Levenshtein, alignement lettre à lettre, erreur d'accen
 js/leitner.js           boîtes, planification, choix des mots, file de séance, mode du jour
 js/distractors.js       fausses orthographes plausibles par règles
 js/syllables.js         découpage en syllabes pour l'indice
+js/traps.js             pièges d'orthographe, lieux (palais mental), morceaux colorés
 js/store.js             données localStorage, liste d'exemple, nouvelle semaine
 js/speech.js            synthèse vocale fr-FR, débit 0,85
 js/sound.js             sons Web Audio (bloc, jingle), coupure du son
@@ -119,7 +141,7 @@ Le clavier peut mal reconnaître une lettre : après chaque saisie, l'appli affi
 
 ## Liste publiée (`liste.txt`)
 
-La liste de la semaine peut aussi être publiée avec l'appli : c'est le fichier `liste.txt` à la racine du dépôt (même format que dans l'espace parent, première ligne facultative `# Titre`). À chaque ouverture, si la tablette est en ligne et que `liste.txt` a changé, l'appli démarre automatiquement une nouvelle semaine avec cette liste. Les mots pas encore sus de la liste publiée précédente sont gardés en révision. Le monde de l'enfant est conservé.
+La liste de la semaine peut aussi être publiée avec l'appli : c'est le fichier `liste.txt` à la racine du dépôt (même format que dans l'espace parent, première ligne facultative `# Titre`). À chaque ouverture, si la tablette est en ligne et que `liste.txt` a changé, l'appli démarre automatiquement une nouvelle semaine avec cette liste. Les mots de la liste publiée précédente passent en grande révision. Le monde de l'enfant est conservé.
 
 ## Espace parent
 
@@ -133,7 +155,8 @@ Bouton ⚙️ en haut de l'accueil, puis répondre à la multiplication.
   La phrase est lue après le mot, comme en dictée.
 - **Jour de la dictée** : vendredi par défaut.
 - **Progression** : boîte de chaque mot, réussites (dont avec indice), erreurs, erreurs fréquentes, prochaine révision, scores des dictées blanches.
-- **Nouvelle semaine** : coller la nouvelle liste, puis « Commencer une nouvelle semaine ». Les mots pas encore en boîte 3 peuvent être gardés en révision. Le monde de l'enfant est conservé.
+- **Nouvelle semaine** : coller la nouvelle liste, puis « Commencer une nouvelle semaine ». Les mots de la semaine passent en grande révision (case cochée par défaut). Le monde de l'enfant est conservé.
+- **Grande révision** : tableau des mots des semaines passées (étape, prochaine révision, erreurs) et liste des mots sus pour toujours.
 - **Réglages** : ouverture automatique du clavier, écriture cursive (police Playwrite FR Moderne), sons, saisie par défaut (clavier ou tuiles), test de la voix.
 
 Si aucune voix française n'est trouvée : **Paramètres Android → Système → Langues → Synthèse vocale** → moteur Google → installer les données vocales **Français (France)**.

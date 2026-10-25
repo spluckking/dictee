@@ -9,7 +9,7 @@
  * instantanément depuis le cache ; si le réseau est là, les fichiers sont
  * rafraîchis pour le lancement suivant. Changer VERSION force un recache complet.
  */
-const VERSION = 'dictee-blocs-v4';
+const VERSION = 'dictee-blocs-v5';
 
 const ASSETS = [
   './',
@@ -21,6 +21,7 @@ const ASSETS = [
   './js/leitner.js',
   './js/distractors.js',
   './js/syllables.js',
+  './js/traps.js',
   './js/store.js',
   './js/speech.js',
   './js/sound.js',

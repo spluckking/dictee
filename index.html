@@ -34,6 +34,7 @@
         <div>
           <p id="compte-a-rebours" class="grand"></p>
           <p id="resume-mots"></p>
+          <p id="resume-revision" class="aide"></p>
         </div>
       </div>
 
@@ -52,6 +53,7 @@
       <div class="ligne-boutons">
         <button class="btn btn-or" data-action="jouer" data-mode="blanche" id="btn-blanche">📝 Dictée blanche</button>
         <button class="btn btn-brique" data-action="monde">🏠 Mon monde</button>
+        <button class="btn btn-saphir" data-action="carte">🗺️ Ma carte des pièges</button>
       </div>
     </section>
 
@@ -77,6 +79,11 @@
         <div id="indice" class="indice" hidden></div>
 
         <!-- consigne / mot affiché (regarder-cacher-écrire, correction) -->
+        <!-- annonce d'un paquet de mots (découverte) -->
+        <div id="paquet" class="paquet" hidden></div>
+        <!-- fiche d'étude d'un mot nouveau : découpé, pièges colorés, lieu -->
+        <div id="fiche" class="fiche" hidden></div>
+
         <p id="consigne" class="consigne"></p>
         <div id="mot-montre" class="mot mot-montre" hidden></div>
 
@@ -106,9 +113,11 @@
         <!-- confirmation de ce que le clavier a reconnu -->
         <div id="confirmation" class="confirmation" hidden>
           <p>Tu as écrit :</p>
+          <p class="aide">C'est bien ça ? Es-tu sûr de toi ?</p>
           <div id="reconnu" class="mot reconnu"></div>
           <div class="ligne-boutons">
-            <button class="btn btn-herbe" data-action="confirmer">C'est ce que j'ai écrit</button>
+            <button class="btn btn-herbe" data-action="confirmer" id="btn-sur">😎 Sûr de moi</button>
+            <button class="btn btn-or" data-action="hesiter" id="btn-hesite">🤔 J'hésite</button>
             <button class="btn btn-brique" data-action="recommencer">Effacer, je recommence</button>
           </div>
         </div>
@@ -158,6 +167,16 @@
       </div>
     </section>
 
+    <!-- ===================== MA CARTE DES PIÈGES ===================== -->
+    <section id="ecran-carte" class="ecran" hidden>
+      <header class="barre">
+        <button class="btn btn-pierre btn-icone" data-action="accueil" aria-label="Revenir à l'accueil">⬅️</button>
+        <h2 class="titre-pixel">Ma carte</h2>
+        <span></span>
+      </header>
+      <div id="carte" class="panneau carte"></div>
+    </section>
+
     <!-- ===================== PARENT : QUESTION ===================== -->
     <section id="ecran-porte" class="ecran" hidden>
       <div class="panneau porte">
@@ -203,6 +222,11 @@
         <div class="tableau-scroll"><table id="progression"></table></div>
         <div id="scores-blanche" class="aide"></div>
 
+        <h3>Grande révision (anciennes semaines)</h3>
+        <p class="aide">Les mots des semaines passées reviennent après 2, 7, 14 puis 30 jours (5 au plus par séance). Après 4 réussites d'affilée, ils sont retirés : sus pour toujours. Une erreur les fait recommencer au début.</p>
+        <p id="grande-revision-info" class="aide"></p>
+        <div class="tableau-scroll"><table id="grande-revision"></table></div>
+
         <h3>Réglages</h3>
         <label class="option"><input type="checkbox" id="opt-cursive"> Afficher les mots en écriture cursive</label>
         <label class="option"><input type="checkbox" id="opt-son"> Sons du jeu</label>
@@ -214,7 +238,7 @@
 
         <h3>Nouvelle semaine</h3>
         <p class="aide">Colle d'abord la nouvelle liste dans le cadre ci-dessus, puis :</p>
-        <label class="option"><input type="checkbox" id="garder-rates" checked> Garder en révision les mots pas encore sus : <span id="liste-rates"></span></label>
+        <label class="option"><input type="checkbox" id="garder-rates" checked> Mettre les mots de cette semaine en grande révision (<span id="liste-rates"></span>)</label>
         <div class="ligne-boutons">
           <button class="btn btn-brique" data-action="nouvelle-semaine">Commencer une nouvelle semaine</button>
         </div>
@@ -228,6 +252,7 @@
   <script src="js/leitner.js"></script>
   <script src="js/distractors.js"></script>
   <script src="js/syllables.js"></script>
+  <script src="js/traps.js"></script>
   <script src="js/store.js"></script>
   <script src="js/speech.js"></script>
   <script src="js/sound.js"></script>
