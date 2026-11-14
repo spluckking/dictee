@@ -95,3 +95,9 @@ test('déterminant facultatif : « jungle » accepté pour « la jungle »', () 
   assert.deepEqual(A.splitDeterminer("l'attention"), { det: "l'", core: 'attention' });
   assert.deepEqual(A.splitDeterminer('lointain'), { det: '', core: 'lointain' });
 });
+
+test('le « se » des verbes pronominaux est facultatif', () => {
+  assert.equal(A.grade('nourrir', 'se nourrir').correct, true);
+  assert.equal(A.grade('se nourrir', 'se nourrir').correct, true);
+  assert.equal(A.grade('déplaçer', 'se déplacer').correct, false);
+});

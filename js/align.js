@@ -109,8 +109,9 @@
     return ops.reverse();
   }
 
-  // Déterminants qu'on peut ne pas écrire (« jungle » accepté pour « la jungle »).
-  const DET = /^(le|la|les|l'|un|une|des|du|de la|de l'|au|aux|mon|ma|mes|ton|ta|tes|son|sa|ses|notre|nos|votre|vos|leur|leurs|ce|cet|cette|ces)(?:\s+|(?<='))(?=\S)/i;
+  // Déterminants (et « se » des verbes pronominaux) qu'on peut ne pas écrire :
+  // « jungle » est accepté pour « la jungle », « nourrir » pour « se nourrir ».
+  const DET = /^(le|la|les|l'|un|une|des|du|de la|de l'|au|aux|mon|ma|mes|ton|ta|tes|son|sa|ses|notre|nos|votre|vos|leur|leurs|ce|cet|cette|ces|se|s')(?:\s+|(?<='))(?=\S)/i;
 
   /** Sépare le déterminant du mot : « l'attention » → { det: "l'", core: 'attention' }. */
   function splitDeterminer(target) {
