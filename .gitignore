@@ -1,0 +1,40 @@
+# Dépendances
+node_modules/
+
+# Sorties de build Vite
+dist/
+dist-ssr/
+*.local
+
+# Variables d'environnement (secrets)
+.env
+.env.*
+!.env.example
+
+# Journaux
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Caches et outils
+.vite/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# Éditeurs et systèmes
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
