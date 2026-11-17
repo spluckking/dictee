@@ -207,6 +207,10 @@ body.cursive .tuile { font-weight: 400; font-size: calc(var(--tuile, 64px) * 0.4
 body.cursive .choix-mot { font-weight: 400; font-size: clamp(1.6rem, 6vw, 2.6rem); }
 .choix-mot.juste { --c: #8fe07a; }
 .choix-mot.faux { --c: #ffc48a; }
+/* Révision du jour : 4 choix en grille 2 × 2 pour que tout reste visible sans défiler */
+.choix.quatre { grid-template-columns: 1fr 1fr; gap: 10px; }
+.choix.quatre .choix-mot { font-size: clamp(1.1rem, min(6vw, 5vh), 2.6rem); min-height: 72px; padding: 6px 8px; overflow-wrap: normal; word-break: keep-all; hyphens: none; }
+body.cursive .choix.quatre .choix-mot { font-size: clamp(1rem, min(5.2vw, 4.4vh), 2.2rem); }
 
 /* Indice */
 .indice { background: #fff8d6; border: 4px solid #e0a800; padding: 10px 14px; text-align: center; }
@@ -313,6 +317,7 @@ th { background: #e9dcc0; font-size: 0.9rem; }
   .lettre-enfant { font-size: 1.1rem; min-height: 1.6rem; }
   .choix-mot { min-height: 60px; font-size: clamp(1.6rem, 6vh, 3.2rem); }
   .choix { gap: 10px; }
+  .choix.quatre .choix-mot { min-height: 54px; font-size: clamp(1.1rem, min(6vw, 5vh), 2.4rem); }
   .indice { padding: 6px 10px; }
   .syllabes { font-size: clamp(1.6rem, 6vh, 3.4rem); margin: 2px 0; }
   .indice .phrase, .fiche .phrase { font-size: 1.15rem; }

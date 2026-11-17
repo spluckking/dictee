@@ -161,6 +161,10 @@
    */
   function fallback(w) {
     const out = [];
+    // infinitif en -er confondu avec -é / -ez (chasser → chassé, chassez)
+    if (/er$/.test(w) && w.length > 3) out.push(w.slice(0, -2) + 'é', w.slice(0, -2) + 'ez');
+    // e final oublié après une consonne (plante → plant)
+    if (/[^aeiouyéèêëàâîïôûù]e$/.test(w) && w.length > 3) out.push(w.slice(0, -1));
     for (let i = 0; i < w.length - 1; i++) {
       if (isVowel(w[i]) && isVowel(w[i + 1])) {
         out.push(splice(w, i + 1, 1, ''), splice(w, i, 2, w[i + 1] + w[i]));
@@ -171,6 +175,12 @@
     }
     // dernier recours : s muet ajouté (jungle → jungles)
     if (!/[sx]$/.test(w)) out.push(w + 's');
+    // consonne doublée à tort, en tout dernier (plante → plantte)
+    for (let i = 1; i < w.length; i++) {
+      if (!isVowel(w[i]) && w[i] !== 'h' && w[i] !== w[i - 1] && w[i] !== w[i + 1] && /\p{L}/u.test(w[i])) {
+        out.push(splice(w, i, 1, w[i] + w[i]));
+      }
+    }
     return out.filter((v) => v !== w && v.length > 1);
   }
 
@@ -202,7 +212,7 @@
       if (pick) chosen.push(pick);
     }
     // 2e passage : n'importe quelle variante restante, puis le repli
-    const rest = shuffle([].concat.apply([], rules.map((k) => byRule[k])), rng).concat(shuffle(fallback(w), rng));
+    const rest = shuffle([].concat.apply([], rules.map((k) => byRule[k])), rng).concat(fallback(w)); // repli : du plus plausible au moins plausible
     for (const v of rest) {
       if (chosen.length >= n) break;
       if (v !== w && chosen.indexOf(v) < 0) chosen.push(v);

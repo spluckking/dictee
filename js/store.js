@@ -11,7 +11,7 @@
  *   blanche: [{ date, score, total }],
  *   world: { blocks: ['terre', 'pierre', …] },   // blocs posés, dans l'ordre
  *   archive: { mot: { interval, ease, streak, nextDue, sentence, week, ok, fail } }, // phase 2 : la mine
- *   daily: { day, words, ok, done },  // révision du jour (phase 1) : tous les mots, une récompense
+ *   daily: { day, words, ok, write, done },  // révision du jour (phase 1) : tous les mots, une récompense ; write = mots ratés, à écrire en entier
  *   mine: { depth, found: [{ id, depth, date }], week, exp: { day, words, ok, done } }, // phase 2
  *   retired: [{ w, week, date }],    // mots sus pour toujours (sortis de la mine)
  *   settings: { sound, cursive, input: 'clavier' | 'tuiles', stylusDirect: false (true = pas de clavier virtuel automatique) },
@@ -68,7 +68,7 @@
       world: { blocks: [] },
       archive: {},
       retired: [],
-      daily: { day: null, words: [], ok: [], done: false },
+      daily: { day: null, words: [], ok: [], write: [], done: false },
       mine: { depth: 0, found: [], week: null, exp: { day: null, words: [], ok: [], done: false } },
       settings: { sound: true, cursive: false, input: 'clavier', stylusDirect: false },
       stats: { lastDay: null, sessionsToday: 0 }
@@ -155,7 +155,7 @@
     s.words = fresh;
     s.progress = {};
     s.blanche = [];
-    s.daily = { day: null, words: [], ok: [], done: false };
+    s.daily = { day: null, words: [], ok: [], write: [], done: false };
     s.weekStart = today;
     save();
   }

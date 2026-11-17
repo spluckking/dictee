@@ -14,7 +14,7 @@ Application web progressive (PWA) pour aider un enfant de CE2 à apprendre sa li
 | Dictée-flash | Le mot est lu (puis la phrase), l'enfant l'écrit, la correction s'affiche |
 | Regarder, cacher, écrire | Le mot s'affiche 3 secondes puis disparaît, l'enfant l'écrit |
 | Lettres mélangées | Reconstituer le mot avec des tuiles (toucher ou glisser) |
-| Le bon mot | Choisir la bonne orthographe parmi 3 |
+| Le bon mot | Choisir la bonne orthographe parmi 3 (parmi 4 dans la révision du jour) |
 | Dictée blanche | Tous les mots une fois, sans indice, score à la fin (proposée la veille) |
 | Mon monde | Les blocs gagnés construisent une cabane, puis une maison, puis des châteaux |
 | Espace parent | Protégé par une multiplication : liste, jour de dictée, progression, nouvelle semaine |
@@ -63,7 +63,7 @@ Deux catégories dans la mine :
 - **Expédition du jour** : uniquement les mots à réviser ce jour-là (10 au plus, les plus en retard d'abord), en dictée-flash avec « Sûr de moi / J'hésite ». Un mot raté revient dans l'expédition jusqu'à ce qu'il soit juste ; l'expédition est finie quand tous ses mots sont justes, une fois par jour. C'est elle qui fait avancer la mémoire des mots. Récompense spéciale une fois par semaine (de lundi à dimanche) : la première expédition réussie de la semaine fait descendre la mine de 5 blocs et trouver le trésor de la semaine (lanterne, champignon lumineux, fossile, coffre, géode, wagonnet, statue d'or, œuf mystérieux, couronne, puis géodes géantes).
 - **S'entraîner** (Dictée-flash, Lettres, Le bon mot) : 10 mots de la mine au hasard, sans effet sur leur mémoire. Bonus de base : chaque mot juste creuse 1 bloc (terre, pierre, ardoise, grotte de cristal, cœur de magma).
 
-**Révision du jour** (gros bouton vert de l'accueil) : tous les mots de la semaine, chaque jour jusqu'à la dictée, quel que soit leur niveau. Le premier jour, les mots nouveaux arrivent par paquets de 5 avec leur fiche d'étude. Un mot raté revient plus loin dans la révision jusqu'à ce qu'il soit juste ; si l'enfant s'arrête en cours de route, il reprend plus tard là où il en était. Quand tous les mots sont justes, la révision est finie pour la journée et rapporte **une seule récompense** : un coffre avec un bloc par mot (plus rare quand le mot est mieux su : boîte 1 bloc commun, boîte 2 peu commun, boîte 3 minerai rare), qui fait avancer la construction dans « Mon monde ». La semaine suivante, la révision du jour passe à la nouvelle liste.
+**Révision du jour** (gros bouton vert de l'accueil) : tous les mots de la semaine, chaque jour jusqu'à la dictée, quel que soit leur niveau. Le premier jour, les mots nouveaux arrivent par paquets de 5 avec leur fiche d'étude. Chaque mot se présente d'abord comme un choix parmi 4 orthographes (une seule est juste). Un mot raté est réécrit tout de suite de mémoire, puis revient plus loin dans la révision, cette fois à écrire en entier, jusqu'à ce qu'il soit juste ; si l'enfant s'arrête en cours de route, il reprend plus tard là où il en était. Quand tous les mots sont justes, la révision est finie pour la journée et rapporte **une seule récompense** : un coffre avec un bloc par mot (plus rare quand le mot est mieux su : boîte 1 bloc commun, boîte 2 peu commun, boîte 3 minerai rare), qui fait avancer la construction dans « Mon monde ». La semaine suivante, la révision du jour passe à la nouvelle liste.
 
 **S'entraîner (sans récompense)** : Dictée-flash, Regarder-cacher-écrire, Lettres mélangées, Le bon mot et Dictée blanche restent libres, autant que l'enfant veut, mais ne rapportent rien. Le monde est conservé d'une semaine à l'autre.
 
@@ -82,8 +82,11 @@ js/distractors.js       fausses orthographes plausibles par règles
 js/syllables.js         découpage en syllabes pour l'indice
 js/traps.js             pièges d'orthographe, lieux (palais mental), morceaux colorés
 js/store.js             données localStorage, liste d'exemple, nouvelle semaine
-js/speech.js            synthèse vocale fr-FR, débit 0,85
-js/sound.js             sons Web Audio (bloc, jingle), coupure du son
+js/audiokey.js          nom du fichier audio d'un mot, d'une phrase ou d'un découpage en syllabes
+js/speech.js            voix Denise (Azure) enregistrée dans audio/voix/, synthèse du navigateur en secours
+js/sound.js             bruitages ElevenLabs de audio/sons/ s'ils existent, sinon sons Web Audio
+tools/make-voices.js    enregistre la voix Denise (npm run voices, clé Azure dans .env)
+tools/make-sounds.js    génère les bruitages ElevenLabs (npm run sounds, clé ElevenLabs dans .env)
 js/pixel.js             textures, mineur, paysage, plans de construction
 js/app.js               écrans et modes de jeu
 tests/                  tests unitaires (node:test, aucune dépendance)
@@ -170,8 +173,10 @@ Bouton ⚙️ en haut de l'accueil, puis répondre à la multiplication.
 - **La mine des souvenirs** : tableau des mots des semaines passées (intervalle, facilité, réussites d'affilée, prochaine révision, erreurs) et liste des mots sus pour toujours.
 - **Réglages** : ouverture automatique du clavier, écriture cursive (police Playwrite FR Moderne), sons, saisie par défaut (clavier ou tuiles), test de la voix.
 
-Si aucune voix française n'est trouvée : **Paramètres Android → Système → Langues → Synthèse vocale** → moteur Google → installer les données vocales **Français (France)**.
+La voix est celle de Denise (Azure, fr-FR-DeniseNeural), enregistrée à l'avance pour chaque mot, chaque phrase et chaque découpage en syllabes : à chaque nouvelle liste, lancer `npm run voices` (ne crée que les fichiers manquants ; `-- --force` pour tout refaire). Un mot ajouté à la main dans l'espace parent n'a pas de fichier : il est lu par la synthèse vocale de la tablette.
+
+Si aucune voix française n'est trouvée pour ce secours : **Paramètres Android → Système → Langues → Synthèse vocale** → moteur Google → installer les données vocales **Français (France)**.
 
 ## Crédits et licences
 
-Code : MIT. Pixel art, personnage et sons : créés pour cette appli, générés par le code. Polices : SIL Open Font License, voir `fonts/LICENCES.txt`.
+Code : MIT. Pixel art et personnage : créés pour cette appli, générés par le code. Voix : Azure Speech (Denise). Sons : générés par le code, ou par ElevenLabs s'ils sont présents dans `audio/sons/`. Polices : SIL Open Font License, voir `fonts/LICENCES.txt`.

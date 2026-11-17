@@ -107,10 +107,21 @@
 
   let G = null; // état de la séance en cours
 
-  /** État de la révision du jour (remis à zéro chaque jour). */
+  /**
+   * État de la révision du jour (remis à zéro chaque jour).
+   * write : mots ratés aujourd'hui, à écrire en entier quand ils reviennent
+   * (au premier passage, chaque mot est un choix parmi 4 orthographes).
+   */
   function dailyState() {
-    if (S.daily.day !== today()) S.daily = { day: today(), words: Store.allWords(), ok: [], done: false };
+    if (S.daily.day !== today()) S.daily = { day: today(), words: Store.allWords(), ok: [], write: [], done: false };
+    if (!S.daily.write) S.daily.write = [];
     return S.daily;
+  }
+
+  /** Façon de répondre pour ce mot : le mode, sauf en révision du jour (choix puis écriture). */
+  function answerKind(w) {
+    if (G.mode !== 'jour') return G.mode;
+    return S.daily.write.indexOf(w) >= 0 ? 'ecrire' : 'choix';
   }
 
   /** Découpe en paquets de 5 les mots jamais vus, regroupés par lieu (même piège). */
@@ -228,12 +239,13 @@
     if (G.mode !== 'blanche' && isNew(w) && !G.studied) return showStudyCard();
     const studied = G.studied;
     G.studied = false;
-    const mode = G.mode;
+    const mode = G.kind = answerKind(w);
     if (mode === 'regarder' && !studied) return lookCoverWrite();
-    if (mode === 'choix') renderChoices();
+    if (mode === 'choix') renderChoices(G.mode === 'jour' ? 3 : 2);
     else if (mode === 'lettres') renderTiles(w, false);
-    else openInput(); // dictée-flash, dictée blanche, mine
+    else openInput(); // dictée-flash, dictée blanche, mine, mot à réécrire de la révision du jour
     $('#consigne').textContent = mode === 'choix' ? 'Écoute et choisis la bonne orthographe.' :
+      mode === 'ecrire' ? 'Tu t\'étais trompé : cette fois, écris le mot en entier.' :
       mode === 'lettres' ? 'Écoute et remets les lettres dans l\'ordre.' : 'Écoute le mot et écris-le.';
     speakWord();
   }
@@ -392,15 +404,15 @@
     lieu.appendChild(placeBadge(place));
     lieu.appendChild(el('span', 'aide', Traps.PLACES[place].regle));
     box.appendChild(lieu);
-    if (G.mode !== 'choix') {
+    if (G.kind !== 'choix') {
       // syllabes et pièges montrés 3 secondes puis cachés (on ne recopie pas en regardant)
       const syl = Syllables.split(G.word);
       const p = chunkedWord(G.word, 'syllabes');
       box.appendChild(p);
       setTimeout(() => { p.classList.add('cache'); }, 3000);
-      Speech.say(syl.length > 1 ? syl : [G.word], 0.7);
+      Speech.syllables(G.word, syl);
     } else if (G.sentence) {
-      Speech.say([G.sentence]);
+      Speech.sentence(G.sentence);
     }
     show(box, true);
   }
@@ -566,10 +578,12 @@
 
   /* ----- Le bon mot ----- */
 
-  function renderChoices() {
+  /** n fausses orthographes + le mot juste (2 pour « Le bon mot », 3 pour la révision du jour). */
+  function renderChoices(n) {
     const box = $('#choix');
     box.innerHTML = '';
-    const options = shuffle([G.word].concat(Distractors.generate(G.word, 2)));
+    const options = shuffle([G.word].concat(Distractors.generate(G.word, n || 2)));
+    box.classList.toggle('quatre', options.length === 4);
     options.forEach((o) => {
       const b = el('button', 'btn btn-pierre choix-mot mot', o);
       b.addEventListener('click', () => {
@@ -616,6 +630,8 @@
     // révision du jour / expédition : le mot est acquis pour aujourd'hui dès qu'il est juste
     const okList = G.mode === 'jour' ? S.daily.ok : G.mode === 'mine' ? S.mine.exp.ok : null;
     if (okList && res.correct && okList.indexOf(G.word) < 0) okList.push(G.word);
+    // révision du jour : un mot raté devra être écrit en entier quand il reviendra
+    if (G.mode === 'jour' && !res.correct && S.daily.write.indexOf(G.word) < 0) S.daily.write.push(G.word);
     Store.save();
 
     show($('#confirmation'), false);
@@ -649,7 +665,7 @@
       sceneGame.celebrate(G.mode === 'mine' ? mineLayer() : 'pierre', (n) => (n < 3 ? Sound.hit() : Sound.crack())).then(() => Sound.success());
     } else {
       $('#message').textContent = (res.accentOnly ? 'Presque ! Regarde l\'accent.' : 'On réessaie !') +
-        (G.unsure || G.mode === 'choix' ? '' : ' Tu étais sûr de toi : regarde bien la différence.');
+        (G.unsure || G.kind === 'choix' ? '' : ' Tu étais sûr de toi : regarde bien la différence.');
       $('#message').className = 'message doux';
       $('#consigne').textContent = 'Regarde bien le mot juste.';
       // le piège du mot, découpé et coloré, et son lieu
@@ -1241,6 +1257,7 @@
     S.publishedListId = id;
     S.listTitle = Store.listTitle(text);
     Store.save();
+    Speech.preload(S.words);
     if (!$('#ecran-accueil').hidden) renderHome();
   }
 
@@ -1253,5 +1270,6 @@
   applySettings();
   drawDecor();
   renderHome();
+  Speech.preload(S.words);
   checkPublishedList();
 })();

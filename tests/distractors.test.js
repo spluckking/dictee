@@ -78,3 +78,15 @@ test('mot avec article ou pronom : seul le dernier mot change', () => {
     }
   }
 });
+
+test('révision du jour : 3 fausses orthographes distinctes pour chaque mot de la liste', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const words = fs.readFileSync(path.join(__dirname, '..', 'liste.txt'), 'utf8').split(/\r?\n/)
+    .filter((l) => l.trim() && !/^\s*#/.test(l)).map((l) => l.split('|')[0].trim());
+  ['la plante', 'chasser', 'mais', 'pour'].concat(words).forEach((w) => {
+    const g = D.generate(w, 3, rng(7));
+    assert.equal(new Set(g).size, 3, w + ' → ' + g.join(' / '));
+    assert.ok(!g.includes(w), w);
+  });
+});

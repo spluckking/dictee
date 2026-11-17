@@ -5,6 +5,8 @@
   "description": "PWA pour apprendre sa liste de mots avant la dictée (CE2).",
   "scripts": {
     "test": "node --test tests/*.test.js",
+    "voices": "node tools/make-voices.js",
+    "sounds": "node tools/make-sounds.js",
     "icons": "node tools/make-icons.js"
   },
   "license": "MIT"
