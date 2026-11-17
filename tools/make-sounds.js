@@ -21,7 +21,7 @@ const DIR = path.join(ROOT, 'audio', 'sons');
 // Descriptions en anglais (ElevenLabs les comprend mieux). Durée en secondes.
 const SOUNDS = {
   tap: { text: 'Soft short wooden click, a small letter tile tapped on a table, cheerful game UI sound', duration: 0.5 },
-  hit: { text: 'Single pickaxe strike on stone block, short dry knock, cartoon video game', duration: 0.5 },
+  hit: { text: 'Loud single pickaxe strike hitting a stone block, sharp clear knock, cartoon video game sound effect', duration: 0.8 },
   crack: { text: 'Stone block breaking and crumbling into small pebbles, short, satisfying, cartoon video game', duration: 0.8 },
   place: { text: 'Wooden block placed down with a soft thud, short, satisfying building game sound', duration: 0.5 },
   success: { text: 'Short happy rising chime jingle, four bright notes, children video game success', duration: 1.2 },

@@ -8,11 +8,11 @@
 - Toujours répondre en français.
 
 ## Structure
-- index.html, manifest.webmanifest, css/style.css, sw.js (service worker, chemins relatifs, constante VERSION — actuellement `dictee-blocs-v10`).
+- index.html, manifest.webmanifest, css/style.css, sw.js (service worker, chemins relatifs, constante VERSION — actuellement `dictee-blocs-v11`).
 - js/ : align, leitner, distractors, syllables, traps, store, audiokey, speech, sound, pixel, app.
 - audio/voix/ : voix Denise (Azure, fr-FR-DeniseNeural) enregistrée par `npm run voices` (tools/make-voices.js) : un MP3 par mot, par phrase et par découpage en syllabes, nommé par js/audiokey.js. Débit : mot -10 %, phrase 0 %, syllabes -15 %. Sans fichier, speech.js utilise la synthèse du navigateur.
-- audio/sons/ : bruitages ElevenLabs générés par `npm run sounds` (tools/make-sounds.js) ; pas encore générés, sound.js garde ses sons Web Audio tant que audio/sons/sons.json n'existe pas.
-- Clés AZURE_SPEECH_KEY, AZURE_SPEECH_REGION (et plus tard ELEVENLABS_API_KEY) dans .env, ignoré par git : ne jamais les commiter ni les afficher.
+- audio/sons/ : 7 bruitages ElevenLabs générés par `npm run sounds` (tools/make-sounds.js), listés dans sons.json et dans ASSETS de sw.js ; sound.js égalise leur volume et garde ses sons Web Audio si un fichier manque.
+- Clés AZURE_SPEECH_KEY, AZURE_SPEECH_REGION et ELEVENLABS_API_KEY dans .env, ignoré par git : ne jamais les commiter ni les afficher.
 - fonts/ : polices auto-hébergées (licence OFL, voir fonts/LICENCES.txt). icons/ : icônes PNG (générées par tools/make-icons.js, `npm run icons`).
 - liste.txt : la liste de mots de la semaine.
 - Tests : node --test tests/*.test.js (ou `npm test`), à lancer avant chaque push.

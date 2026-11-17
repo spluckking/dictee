@@ -13,7 +13,18 @@
   let ctx = null;
   let enabled = true;
   const buffers = {};   // nom → AudioBuffer (bruitage enregistré)
+  const levels = {};    // nom → gain qui ramène la crête du son vers 0,9
   let loading = false;
+
+  /** Égalise les bruitages : certains sortent d'ElevenLabs beaucoup plus faibles. */
+  function norm(buf) {
+    let peak = 0;
+    for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+      const d = buf.getChannelData(ch);
+      for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > peak) peak = v; }
+    }
+    return peak > 0.001 ? Math.min(8, 0.9 / peak) : 1;
+  }
 
   function ac() {
     if (!ctx) {
@@ -35,7 +46,7 @@
       .then((names) => Promise.all((names || []).map((n) => fetch('audio/sons/' + n + '.mp3')
         .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
         .then((data) => new Promise((ok, ko) => c.decodeAudioData(data, ok, ko)))
-        .then((buf) => { buffers[n] = buf; })
+        .then((buf) => { buffers[n] = buf; levels[n] = norm(buf); })
         .catch(() => {}))))
       .catch(() => {});
   }
@@ -48,7 +59,7 @@
     const src = c.createBufferSource();
     src.buffer = buffers[name];
     const g = c.createGain();
-    g.gain.value = vol == null ? 0.8 : vol;
+    g.gain.value = (vol == null ? 0.8 : vol) * (levels[name] || 1);
     src.connect(g).connect(c.destination);
     src.start(c.currentTime + (when || 0));
     return true;
