@@ -1167,6 +1167,17 @@
       renderProgress();
     },
     exemple() { $('#liste').value = Store.SAMPLE; },
+    // Copie de toute la progression, à importer dans le jeu de la ville (jeu_edu).
+    exporter() {
+      const fichier = new Blob([JSON.stringify(Store.get())], { type: 'application/json' });
+      const lien = document.createElement('a');
+      lien.href = URL.createObjectURL(fichier);
+      lien.download = 'dictee-blocs-' + Leitner.todayStr() + '.json';
+      document.body.append(lien);
+      lien.click();
+      lien.remove();
+      setTimeout(() => URL.revokeObjectURL(lien.href), 1000);
+    },
     'test-voix'() { Speech.dictate('chevaux', 'Les chevaux galopent dans le pré.'); },
     'nouvelle-semaine'() {
       const text = $('#liste').value;
